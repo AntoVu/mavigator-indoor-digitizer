@@ -23,15 +23,22 @@ a person has to check it against the diagrams and fix the rest. That review is t
    floor. **How this works** at the top of the tool explains each drawing tool. The **Checklist** panel lists what the
    tool itself finds wrong; aim to empty it.
 5. Press **Save this building**. It downloads `<building>.json` (for example `SH.json`).
-6. In the Mavigator repo, on a branch of your own:
+6. In the Mavigator repo, all your buildings go on one branch of your own, one commit per building named after it.
+   The first time:
    ```sh
-   git switch -c review-SH
+   git switch main && git pull
+   git switch -c review-josue
+   ```
+   Then after each building:
+   ```sh
    # copy SH.json into indoor-reviews/
    git add indoor-reviews/SH.json
-   git commit -m "Review Science Hall indoor trace"
-   git push -u origin review-SH
+   git commit -m "Science Hall"
+   git push -u origin review-josue
    ```
-   Open a pull request. One building per commit is ideal, so the history shows who reviewed what.
+   After your first building, open a **draft** pull request into `main` and keep pushing to it. Mark it ready when
+   all your buildings are in. To fix a building again, save it again, copy it over the old file, and commit it as
+   "Science Hall: fix floor 2 stairs".
 
 Your draft stays in your browser between visits (don't clear site data). To be safe, press **Save this building**
 whenever you stop for the day.
