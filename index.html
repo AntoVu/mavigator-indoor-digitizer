@@ -235,7 +235,7 @@
       <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap 45&deg;</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags square with the building; hold Shift to flip it. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
       <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
       <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it.</li>
-      <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
+      <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions), or the round knob above the box to rotate it (Shift turns in 15° steps). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
       <li><b>Undo</b> with Ctrl+Z and <b>redo</b> with Ctrl+Y (or Ctrl+Shift+Z), or the buttons by Fit: any change, from a dragged corner to an opened file. While drawing (a hallway, an area, a room box), Ctrl+Z takes back the last point first.</li>
       <li><b>Save indoor-edits.json</b> into <code>src/data/</code>, run <code>npm run import:osm</code>, then <code>npm test</code>. The import report's INDOOR section lists anything it could not place.</li>
     </ol>
@@ -2152,7 +2152,7 @@
       }
       body.appendChild(el('p', { class: 'meta', text: 'Click where it is on floor ' + state.floor + '. The app shows it on the indoor map.' }));
     } else if (state.mode === 'move') {
-      body.appendChild(el('p', { class: 'meta', text: 'Drag anything on floor ' + state.floor + ' to move it: a door, an entrance, an object, a stairwell or restroom (with its walls), a hallway, a room. Drag on an empty spot to box an area: every point inside is selected, then drag the selection to move it all together, or drag a corner square of its dashed box to resize it all (Shift keeps the proportions). A hallway or room only partly inside stretches. Hold Space and drag to pan. With Snap 45\u00b0 on (Shift flips it) moves go along the walls. The floor outline has its own tool.' }));
+      body.appendChild(el('p', { class: 'meta', text: 'Drag anything on floor ' + state.floor + ' to move it: a door, an entrance, an object, a stairwell or restroom (with its walls), a hallway, a room. Drag on an empty spot to box an area: every point inside is selected, then drag the selection to move it all together, or drag a corner square of its dashed box to resize it all (Shift keeps the proportions) or the round knob above it to rotate it (Shift: 15° steps). A hallway or room only partly inside stretches. Hold Space and drag to pan. With Snap 45\u00b0 on (Shift flips it) moves go along the walls. The floor outline has its own tool.' }));
       var nSel = selectionHandles().length;
       if (nSel) body.appendChild(el('div', { class: 'actions' }, [el('span', { class: 'meta', text: nSel + ' point(s) in ' + Object.keys(state.moveSel).length + ' feature(s) selected.' }),
         button('Copy (Ctrl+C)', copySelection), button('Clear', function () { state.moveSel = null; renderPanels(); scheduleRender(); })]));
@@ -3683,6 +3683,8 @@
   // Pressing on the selection drags it; on a feature, selects and drags that; elsewhere boxes an area.
   function grabMove(p) {
     if (state.spaceHeld) return null;
+    var knob = state.moveSel && rotateKnob();
+    if (knob && Math.hypot(p.x - knob.x, p.y - knob.y) <= 9) return rotateSelection(state.moveSel, p);
     var corner = state.moveSel && selectionCorner(p);
     if (corner) return resizeSelection(state.moveSel, corner, p);
     if (state.moveSel && onSelection(p)) return dragSelection(state.moveSel, p);
@@ -3728,22 +3730,45 @@
     for (var i = 0; i < cs.length; i++) if (Math.abs(p.x - cs[i].x) <= 7 && Math.abs(p.y - cs[i].y) <= 7) return { at: cs[i], from: cs[(i + 2) % 4] };
     return null;
   }
+  // The rotate knob, 24 px above the middle of the box's top edge.
+  function rotateKnob() {
+    var cs = selectionCorners();
+    return cs.length ? { x: (cs[0].x + cs[1].x) / 2, y: cs[0].y - 24, top: cs[0].y } : null;
+  }
   // Dragging a corner scales every selected point from the opposite corner, on screen (so it follows a turned view).
   // Shift keeps the proportions. Letting go is one undo step.
   function resizeSelection(sel, corner, p) {
-    var o = corner.from, w = corner.at.x - o.x, h = corner.at.y - o.y, moved = false, originals = {};
+    var o = corner.from, w = corner.at.x - o.x, h = corner.at.y - o.y;
+    return transformSelection(sel, p, function (q, e) {
+      var sx = (q.x - o.x) / w, sy = (q.y - o.y) / h;
+      if (e && e.shiftKey) sx = sy = Math.max(Math.abs(sx), Math.abs(sy)) * (sx + sy < 0 ? -1 : 1);
+      return function (s) { return { x: o.x + (s.x - o.x) * sx, y: o.y + (s.y - o.y) * sy }; };
+    });
+  }
+  // Dragging the knob turns every selected point about the box's center; Shift snaps to 15 degree steps.
+  function rotateSelection(sel, p) {
+    var b = selectionBox(), c = { x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 }, a0 = Math.atan2(p.y - c.y, p.x - c.x);
+    return transformSelection(sel, p, function (q, e) {
+      var a = Math.atan2(q.y - c.y, q.x - c.x) - a0, step = Math.PI / 12;
+      if (e && e.shiftKey) a = Math.round(a / step) * step;
+      var cos = Math.cos(a), sin = Math.sin(a);
+      return function (s) { var dx = s.x - c.x, dy = s.y - c.y; return { x: c.x + dx * cos - dy * sin, y: c.y + dx * sin + dy * cos }; };
+    });
+  }
+  // Applies a screen-space transform to the selection while dragging: makeMap(pointer, event) -> (screen pt -> screen pt).
+  function transformSelection(sel, p, makeMap) {
+    var moved = false, originals = {};
     Object.keys(sel).forEach(function (path) { originals[path] = state.docs[path]; });
     return {
       move: function (q, e) {
         if (!moved && Math.hypot(q.x - p.x, q.y - p.y) <= 3) return;
         moved = true;
-        var sx = (q.x - o.x) / w, sy = (q.y - o.y) / h;
-        if (e && e.shiftKey) sx = sy = Math.max(Math.abs(sx), Math.abs(sy)) * (sx + sy < 0 ? -1 : 1);
-        var scale = function (ll) { var s = toScreen(ll.lat, ll.lng); return pointAt(fromScreen(o.x + (s.x - o.x) * sx, o.y + (s.y - o.y) * sy)); };
+        var map = makeMap(q, e);
+        var shift = function (ll) { var s = map(toScreen(ll.lat, ll.lng)); return pointAt(fromScreen(s.x, s.y)); };
         Object.keys(sel).forEach(function (path) {
           if (!originals[path]) return;
           holdOriginal(path);
-          state.docs[path] = mappedDoc(originals[path], sel[path], scale, state.floor);
+          state.docs[path] = mappedDoc(originals[path], sel[path], shift, state.floor);
         });
         scheduleRender();
       },
@@ -3804,6 +3829,11 @@
       ctx.strokeRect(cs[0].x, cs[0].y, cs[2].x - cs[0].x, cs[2].y - cs[0].y); ctx.setLineDash([]);
       ctx.fillStyle = C.accent;
       cs.forEach(function (c) { ctx.fillRect(c.x - 4, c.y - 4, 8, 8); });
+      var k = rotateKnob();
+      ctx.strokeStyle = C.accent; ctx.beginPath(); ctx.moveTo(k.x, k.top); ctx.lineTo(k.x, k.y + 7); ctx.stroke();
+      ctx.beginPath(); ctx.arc(k.x, k.y, 7, 0, 7); ctx.fill();
+      ctx.save(); ctx.fillStyle = '#fff'; ctx.font = 'bold 11px sans-serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText('↻', k.x, k.y + 1); ctx.restore();
     }
     var m = state.marquee;
     if (!m) return;
