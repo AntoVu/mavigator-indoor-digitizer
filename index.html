@@ -4700,9 +4700,11 @@
   $('btn-repo').addEventListener('click', function () {
     var src = BASE && BASE.indoor;
     if (!src) return flash('This base data predates indoor support. Run npm run import:osm and use Load newer base data.', true);
-    var go = function () { replaceDraftWith(src, 'the repo copy (imported ' + BASE.generatedAt.slice(0, 10) + ')'); };
+    // Only the buildings in the repo copy are replaced; other buildings in the draft (reviews in progress) stay.
+    var names = Object.keys(src.buildings || {});
+    var go = function () { replaceDraftWith(src, 'the repo copy (imported ' + BASE.generatedAt.slice(0, 10) + ')', names); };
     if (!draftSize()) return go();
-    confirmThen('Replace the current draft (' + draftSize() + ' traced features) with the repo copy from the import on ' + BASE.generatedAt.slice(0, 10) + '? A newer indoor-edits.json needs Load newer base data or Open indoor-edits.json instead.', 'Replace draft', go);
+    confirmThen('Replace ' + names.join(', ') + ' in your draft with the repo copy from ' + BASE.generatedAt.slice(0, 10) + '? Your changes to those buildings are lost; every other building in the draft stays as it is.', 'Replace them', go);
   });
   $('btn-clear').addEventListener('click', function () {
     var abbr = state.abbr;
