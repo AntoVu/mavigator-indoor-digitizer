@@ -139,6 +139,7 @@
   button.small { padding: 4px 9px; font-size: 12px; }
   button.link { background: none; border: none; padding: 0; color: var(--accent); font-weight: 600; }
   .floor-tabs { display: flex; gap: 4px; flex-wrap: wrap; }
+  .outline-toggles { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; }
   .floor-tabs button { font-family: var(--font-mono); min-width: 38px; justify-content: center; }
   .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; }
 
@@ -248,6 +249,7 @@
           <div class="crumbs"><button class="small link" id="btn-campus" type="button">Campus</button><span id="crumb-building"></span></div>
           <span class="sep"></span>
           <div class="floor-tabs" id="floor-tabs"></div>
+          <div class="outline-toggles" id="outline-toggles"></div>
         </div>
         <div class="toolbar" id="mode-bar">
           <button class="small toggle" type="button" data-mode="select" aria-pressed="true">Select</button>
@@ -487,6 +489,8 @@
     dragVertex: null,     // index of the floor-outline corner being dragged
     moveSel: null,        // Move tool: path -> the handle keys selected in it (handlesOf)
     marquee: null,        // Move tool: the box being dragged out, { a, b } on screen
+    hideFloorOutline: false,     // this floor's own outline hidden (still drawn while the Floor outline tool is on)
+    hideBuildingOutline: false,  // the building's outline hidden on a floor (always drawn on Building outline)
     spaceHeld: false,     // Space held: dragging pans in the Move tool
     outlineBox: null,     // a cut or new outline piece being boxed: { action: 'cut' | 'add', start: first corner or null }
     outlinePiece: null,   // the selected floor-outline piece (index), for Delete this piece
@@ -584,6 +588,9 @@
   // A floor outline doc holds `pieces`, one ring each (a floor whose wings don't connect has several);
   // older docs hold one ring in `points`.
   function outlinePieces(o) { return o.pieces || [o.points]; }
+  // The outline checkboxes beside the floor tabs. An outline being edited always shows.
+  function floorOutlineShown() { return !state.hideFloorOutline || state.mode === 'outline'; }
+  function buildingOutlineShown() { return !state.hideBuildingOutline || state.floor === SHAPE; }
   function floorOutlineOf(abbr, floor) { var o = state.docs[floorOutlinePath(abbr, floor)]; return o ? outlinePieces(o) : null; }
   // The map-shape floor's pieces, when one is chosen and has an outline.
   // The building outline lives with the floor outlines under SHAPE, a slot no floor can have (floors are B or
@@ -1511,7 +1518,7 @@
       if (shape && shapeDrawn[key]) return;
       if (shape) shapeDrawn[key] = true;
       var path = shape ? piecesPath(shape) : ringPath(b.ring);
-      if (isOpen) { ctx.fillStyle = C.surface; ctx.fill(path); }
+      if (isOpen) { ctx.fillStyle = C.surface; ctx.fill(path); if (!buildingOutlineShown()) return; }
       else if (key && withData[key]) { ctx.fillStyle = C.accent; ctx.globalAlpha = 0.25; ctx.fill(path); ctx.globalAlpha = 1; }
       var target = b.abbreviation && TARGETS.indexOf(b.abbreviation) >= 0;
       ctx.strokeStyle = isOpen || target ? C.outline : C['text-dim'];
@@ -1543,8 +1550,9 @@
       var own = floorOutlineOf(state.abbr, state.floor);
       ctx.strokeStyle = C.outline; ctx.lineWidth = 2;
       if (own) { ctx.setLineDash([5, 5]); ctx.globalAlpha = 0.5; }
-      (state.floor === SHAPE ? osmRings(state.abbr) : buildingRings(state.abbr)).forEach(function (r) { ctx.stroke(pointRingPath(r)); });
+      if (buildingOutlineShown()) (state.floor === SHAPE ? osmRings(state.abbr) : buildingRings(state.abbr)).forEach(function (r) { ctx.stroke(pointRingPath(r)); });
       ctx.setLineDash([]); ctx.globalAlpha = 1;
+      if (!floorOutlineShown()) own = null;
       if (state.floor === SHAPE) {
         ctx.strokeStyle = C['text-dim']; ctx.lineWidth = 1.5; ctx.setLineDash([2, 3]);
         floorsOf(state.abbr).forEach(function (fl) { (floorOutlineOf(state.abbr, fl) || []).forEach(function (r) { ctx.stroke(pointRingPath(r)); }); });
@@ -1890,6 +1898,14 @@
         var off = unmappedOf(abbr).indexOf(f) >= 0;
         tabs.appendChild(el('button', { class: 'small toggle', type: 'button', 'aria-pressed': String(f === state.floor), text: off ? f + ' \u00b7 not mapped' : f,
           title: off ? 'Floor ' + f + ' is marked as not mapped: the app tells people so.' : null, on: { click: function () { setFloor(f); } } }));
+      });
+    }
+    var toggles = $('outline-toggles'); toggles.innerHTML = '';
+    if (inBuilding && state.floor && state.floor !== SHAPE) {
+      [['show-floor-outline', 'Floor ' + state.floor + ' outline', 'hideFloorOutline'], ['show-building-outline', 'Building outline', 'hideBuildingOutline']].forEach(function (t) {
+        var box = el('input', { type: 'checkbox', id: t[0], checked: !state[t[2]] || null });
+        box.addEventListener('change', function () { state[t[2]] = !box.checked; scheduleRender(); });
+        toggles.appendChild(el('label', { class: 'check', for: t[0] }, [box, t[1]]));
       });
     }
     $('building-meta').textContent = inBuilding ? floorsOf(abbr).length + ' floor(s)' : '';
