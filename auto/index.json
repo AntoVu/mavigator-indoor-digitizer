@@ -1,0 +1,244 @@
+{
+ "buildings": {
+  "LS": {
+   "name": "Life Science Building",
+   "folder": "LS",
+   "layouts": 7
+  },
+  "residence-arlington-hall": {
+   "name": "Arlington Hall",
+   "folder": "ArlingtonHall",
+   "layouts": 3
+  },
+  "residence-west-hall": {
+   "name": "West Hall",
+   "folder": "WCRH",
+   "layouts": 4
+  },
+  "residence-vandergriff-hall": {
+   "name": "Vandergriff Hall",
+   "folder": "Vandergriff",
+   "layouts": 4
+  },
+  "apartment-the-heights-on-pecan": {
+   "name": "The Heights on Pecan",
+   "folder": "Heights",
+   "layouts": 4
+  },
+  "KC": {
+   "name": "Kalpana Chawla Hall",
+   "folder": "KC",
+   "layouts": 3
+  },
+  "LIBR": {
+   "name": "Central Library",
+   "folder": "LIBR",
+   "layouts": 7
+  },
+  "COBA": {
+   "name": "Business Building",
+   "folder": "COBA",
+   "layouts": 6
+  },
+  "PKH": {
+   "name": "Pickard Hall",
+   "folder": "PKH",
+   "layouts": 6
+  },
+  "UH": {
+   "name": "University Hall",
+   "folder": "UH",
+   "layouts": 6
+  },
+  "SH": {
+   "name": "Science Hall",
+   "folder": "SH",
+   "layouts": 5
+  },
+  "SWSH": {
+   "name": "SWSH - UTA School of Social Work & CONHI Smart Hospital",
+   "folder": "SWSH",
+   "layouts": 5
+  },
+  "FA": {
+   "name": "Fine Arts Building",
+   "folder": "FA",
+   "layouts": 6
+  },
+  "UC": {
+   "name": "University Center",
+   "folder": "UC",
+   "layouts": 3
+  },
+  "UAB": {
+   "name": "University Administration Building",
+   "folder": "UAB",
+   "layouts": 5
+  },
+  "SEIR": {
+   "name": "SEIR Building",
+   "folder": "SEIR",
+   "layouts": 4
+  },
+  "CAPPA": {
+   "name": "CAPPA Building",
+   "folder": "CAPPA",
+   "layouts": 4
+  },
+  "misc-college-park-center": {
+   "name": "College Park Center",
+   "folder": "CPC",
+   "layouts": 3
+  },
+  "WH": {
+   "name": "Woolf Hall",
+   "folder": "WH",
+   "layouts": 4
+  },
+  "CRB": {
+   "name": "Chemistry Research Building",
+   "folder": "CRB",
+   "layouts": 4
+  },
+  "TH": {
+   "name": "Trimble Hall",
+   "folder": "TH",
+   "layouts": 4
+  },
+  "ELB": {
+   "name": "Engineering Lab Building",
+   "folder": "ELB",
+   "layouts": 3
+  },
+  "CPB": {
+   "name": "Chemistry & Physics Building",
+   "folder": "CPB",
+   "layouts": 3
+  },
+  "residence-trinity-hall": {
+   "name": "Trinity Hall",
+   "folder": "TRIN",
+   "layouts": 3
+  },
+  "apartment-the-lofts": {
+   "name": "The Lofts",
+   "folder": "Lofts",
+   "layouts": 3
+  },
+  "HH": {
+   "name": "Hammond Hall",
+   "folder": "HH",
+   "layouts": 4
+  },
+  "RH": {
+   "name": "Ransom Hall",
+   "folder": "RH",
+   "layouts": 3
+  },
+  "PH": {
+   "name": "Preston Hall",
+   "folder": "PH",
+   "layouts": 3
+  },
+  "PE": {
+   "name": "Physical Education Building",
+   "folder": "PE",
+   "layouts": 3
+  },
+  "CAH": {
+   "name": "Carlisle Hall",
+   "folder": "CAH",
+   "layouts": 3
+  },
+  "EES": {
+   "name": "Earth and Environmental Sciences",
+   "folder": "EES",
+   "layouts": 2
+  },
+  "NANO": {
+   "name": "Nanotech Building",
+   "folder": "NANO",
+   "layouts": 3
+  },
+  "MAC": {
+   "name": "Maverick Activities Center",
+   "folder": "MAC",
+   "layouts": 2
+  },
+  "academic-wetsel-building": {
+   "name": "Wetsel Building",
+   "folder": "WET",
+   "layouts": 2
+  },
+  "academic-swift-center": {
+   "name": "Swift Center",
+   "folder": "SC",
+   "layouts": 2
+  },
+  "academic-health-center": {
+   "name": "Health Center",
+   "folder": "HLTH",
+   "layouts": 2
+  },
+  "academic-thermal-energy-plant": {
+   "name": "Thermal Energy Plant",
+   "folder": "ThermalPlant",
+   "layouts": 2
+  },
+  "CH": {
+   "name": "College Hall",
+   "folder": "CH",
+   "layouts": 2
+  },
+  "SAC": {
+   "name": "Studio Arts Center",
+   "folder": "SAC",
+   "layouts": 1
+  },
+  "TXH": {
+   "name": "Texas Hall",
+   "folder": "TXH",
+   "layouts": 1
+  },
+  "GACB": {
+   "name": "General Academic Classroom Building",
+   "folder": "GACB",
+   "layouts": 1
+  },
+  "CELB": {
+   "name": "Civil Engineering Laboratory Building",
+   "folder": "CELB",
+   "layouts": 1
+  },
+  "ARB": {
+   "name": "Aerodynamics Research Building",
+   "folder": "ARB",
+   "layouts": 1
+  },
+  "administration-uta-police-department": {
+   "name": "UTA Police Department",
+   "folder": "POL",
+   "layouts": 1
+  },
+  "ARDRC": {
+   "name": "Amphibian and Reptile Diversity Research Center",
+   "folder": "ARDRC",
+   "layouts": 1
+  },
+  "LCD": {
+   "name": "Library Collections Depository",
+   "folder": "LCD",
+   "layouts": 1
+  },
+  "EHS": {
+   "name": "Environmental Health and Safety",
+   "folder": "EHS",
+   "layouts": 1
+  },
+  "administration-dan-dipert-welcome-center": {
+   "name": "Dan Dipert Welcome Center",
+   "folder": "WELC",
+   "layouts": 1
+  }
+ }
+}
