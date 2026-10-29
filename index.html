@@ -489,7 +489,8 @@
     dragVertex: null,     // index of the floor-outline corner being dragged
     moveSel: null,        // Move tool: path -> the handle keys selected in it (handlesOf)
     marquee: null,        // Move tool: the box being dragged out, { a, b } on screen
-    hideFloorOutline: false,     // this floor's own outline hidden (still drawn while the Floor outline tool is on)
+    placeCarry: true,     // Place by hand: what is traced on the diagram moves with it
+    hideFloorOutline: false,    // this floor's own outline hidden (still drawn while the Floor outline tool is on)
     hideBuildingOutline: false,  // the building's outline hidden on a floor (always drawn on Building outline)
     spaceHeld: false,     // Space held: dragging pans in the Move tool
     outlineBox: null,     // a cut or new outline piece being boxed: { action: 'cut' | 'add', start: first corner or null }
@@ -1148,9 +1149,34 @@
       return { u: c[0], v: c[1], lat: ll.lat, lng: ll.lng };
     });
   }
-  function setPlacement(path, pl) {
-    setDoc(path, Object.assign({}, state.docs[path], { pairs: placementPairs(pl), manual: true }));
-    reproject(path);
+  // g0 and carry: the fit and the floor's docs from before a drag (see carryDocs); otherwise taken now.
+  function setPlacement(path, pl, g0, carry) {
+    var l = state.docs[path];
+    if (!g0 && l && l.floor === state.floor) { g0 = fitOf(l); carry = carryDocs(); }
+    setDoc(path, Object.assign({}, l, { pairs: placementPairs(pl), manual: true }));
+    if (!g0) return reproject(path);
+    var map = carryMap(l.id, g0, fitOf(state.docs[path]));
+    carry.forEach(function (x) { setDoc(x.path, carriedDoc(x.path, x.d, map)); });
+  }
+  // Placing a diagram again carries what is traced on it: every point on this floor that was on its page (or
+  // was traced over it) keeps its spot on the page. With "Move the traces with it" off they stay put on the
+  // map and only their page position is updated. The building outline is every floor's, so it never moves.
+  function carryDocs() {
+    var out = featuresOf(state.abbr).filter(function (x) { return handlesOf(x.path, x.d, state.floor).length; });
+    var op = floorOutlinePath(state.abbr, state.floor);
+    if (state.docs[op]) out.push({ path: op, d: state.docs[op] });
+    return out;
+  }
+  function carryMap(layoutId, g0, g1) {
+    return function (q) {
+      var im = affineToImage(g0, q.lat, q.lng);
+      if (q.layout !== layoutId && !(im.u >= 0 && im.u <= 1 && im.v >= 0 && im.v <= 1)) return q;
+      return pointAt(state.placeCarry ? affineToLatLng(g1, im.u, im.v) : q);
+    };
+  }
+  function carriedDoc(path, f, map) {
+    if (path.indexOf('outlines/') === 0) return { abbr: f.abbr, floor: f.floor, pieces: outlinePieces(f).map(function (r) { return r.map(map); }) };
+    return mappedDoc(f, handlesOf(path, f, state.floor).map(function (h) { return h.key; }), map, state.floor);
   }
   function startPlacing(path) {
     var l = state.docs[path];
@@ -1207,7 +1233,7 @@
     h.edges.forEach(function (c) { if (!kind && near(c.s, 8)) { kind = 'edge'; handle = c; } });
     if (!kind && pointInPoly(p.x, p.y, h.corners.map(function (c) { return c.s; }))) kind = 'move';
     if (!kind) return null;
-    var from = xyAt(p), moved = false;
+    var from = xyAt(p), moved = false, g0 = fitOf(l), carry = carryDocs();
     return {
       move: function (q) {
         if (!moved && Math.hypot(q.x - p.x, q.y - p.y) <= 3) return;
@@ -1215,9 +1241,14 @@
         holdOriginal(path);
         // A new object: docs from the shared draft cannot be changed in place.
         state.docs[path] = Object.assign({}, state.docs[path], { pairs: placementPairs(transformPlacement(pl0, kind, handle, from, xyAt(q))) });
+        // The traces follow live, from where they were when the drag began.
+        if (state.placeCarry) {
+          var map = carryMap(l.id, g0, fitOf(state.docs[path]));
+          carry.forEach(function (x) { holdOriginal(x.path); state.docs[x.path] = carriedDoc(x.path, x.d, map); });
+        }
         scheduleRender();
       },
-      end: function () { if (moved) setPlacement(path, placementOf(state.docs[path])); }
+      end: function () { if (moved) setPlacement(path, placementOf(state.docs[path]), g0, carry); }
     };
   }
   function drawPlacement() {
@@ -2273,6 +2304,10 @@
       else {
         body.appendChild(el('p', { class: 'meta', text: 'Placing ' + pl.name + ' over the building. Drag inside it to move it, a corner to resize it (it keeps its shape), an edge\u2019s middle dot to stretch it one way, and the round knob to rotate it (in 45\u00b0 steps from the walls while Snap 45\u00b0 is on; Shift flips that). Drag outside it to pan. Its opacity slider is in its row under Diagrams.' }));
         if (!imageFor(state.placing)) body.appendChild(el('p', { class: 'meta', text: 'Its picture is not in this browser yet: add the building\u2019s diagrams (Add folder\u2026) to see it.' }));
+        var carryBox = el('input', { type: 'checkbox', id: 'place-carry', checked: state.placeCarry || null });
+        carryBox.addEventListener('change', function () { state.placeCarry = carryBox.checked; });
+        body.appendChild(el('label', { class: 'check', for: 'place-carry' }, [carryBox,
+          'Move the traces and floor ' + state.floor + '\u2019s outline with it (everything on its page keeps its spot on the diagram; Undo puts both back)']));
         var turn = function (deg) {
           var now = placementOf(pl), c = vadd(now.O, vmul(vadd(now.A, now.B), 0.5)), a = deg * Math.PI / 180, A = vrot(now.A, a), B = vrot(now.B, a);
           setPlacement(state.placing, { O: vsub(c, vmul(vadd(A, B), 0.5)), A: A, B: B });
