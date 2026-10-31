@@ -236,7 +236,7 @@
       <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap angles</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags at 0, 30, 45, 60 or 90&deg; from the floor's diagram (or the leveled wall); hold Shift to flip it. <b>Square to angles&hellip;</b> (Save panel) straightens a whole building's walls the same way. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
       <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
       <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it.</li>
-      <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions), or the round knob above the box to rotate it (Shift turns in 15° steps). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
+      <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions), or the round knob above the box to rotate it (Shift turns in 15° steps). <b>Delete</b> removes what's boxed: whole items, or just the boxed corners of a room, area or hallway (box a cutout's corners to remove it). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
       <li><b>Undo</b> with Ctrl+Z and <b>redo</b> with Ctrl+Y (or Ctrl+Shift+Z), or the buttons by Fit: any change, from a dragged corner to an opened file. While drawing (a hallway, an area, a room box), Ctrl+Z takes back the last point first.</li>
       <li><b>Save indoor-edits.json</b> into <code>src/data/</code>, run <code>npm run import:osm</code>, then <code>npm test</code>. The import report's INDOOR section lists anything it could not place.</li>
     </ol>
@@ -2404,10 +2404,10 @@
       }
       body.appendChild(el('p', { class: 'meta', text: 'Click where it is on floor ' + state.floor + '. The app shows it on the indoor map.' }));
     } else if (state.mode === 'move') {
-      body.appendChild(el('p', { class: 'meta', text: 'Drag anything on floor ' + state.floor + ' to move it: a door, an entrance, an object, a stairwell or restroom (with its walls), a hallway, a room. Drag on an empty spot to box an area: every point inside is selected, then drag the selection to move it all together, or drag a corner square of its dashed box to resize it all (Shift keeps the proportions) or the round knob above it to rotate it (Shift: 15° steps). A hallway or room only partly inside stretches. Hold Space and drag to pan. With Snap angles on (Shift flips it) moves go at 0, 30, 45, 60 or 90\u00b0 from the diagram. The floor outline has its own tool.' }));
+      body.appendChild(el('p', { class: 'meta', text: 'Drag anything on floor ' + state.floor + ' to move it: a door, an entrance, an object, a stairwell or restroom (with its walls), a hallway, a room. Drag on an empty spot to box an area: every point inside is selected, then drag the selection to move it all together, or drag a corner square of its dashed box to resize it all (Shift keeps the proportions) or the round knob above it to rotate it (Shift: 15° steps). Delete removes what is boxed: whole items, or just the boxed corners of a room, area or hallway. A hallway or room only partly inside stretches. Hold Space and drag to pan. With Snap angles on (Shift flips it) moves go at 0, 30, 45, 60 or 90\u00b0 from the diagram. The floor outline has its own tool.' }));
       var nSel = selectionHandles().length;
       if (nSel) body.appendChild(el('div', { class: 'actions' }, [el('span', { class: 'meta', text: nSel + ' point(s) in ' + Object.keys(state.moveSel).length + ' feature(s) selected.' }),
-        button('Copy (Ctrl+C)', copySelection), button('Clear', function () { state.moveSel = null; renderPanels(); scheduleRender(); })]));
+        button('Copy (Ctrl+C)', copySelection), button('Delete (Del)', deleteSelection, 'danger'), button('Clear', function () { state.moveSel = null; renderPanels(); scheduleRender(); })]));
       var clip = state.clipboard;
       if (clip && clip.abbr === state.abbr && clip.floor !== state.floor) body.appendChild(el('div', { class: 'actions' }, [
         button('Paste ' + clip.docs.length + ' item(s) from floor ' + clip.floor + ' (Ctrl+V)', pasteClipboard, 'primary')]));
@@ -3936,6 +3936,54 @@
     });
     return next;
   }
+  // Delete in Move: an item whose points on this floor are all boxed goes whole; otherwise just the boxed points go
+  // (a room or area keeps at least 3, a hallway 2, or it goes whole), so a cutout inside a room can be boxed and
+  // removed. Doors, gates and other fixed-shape items go only when boxed whole. A stair or elevator boxed whole goes
+  // only when it serves just this floor (Goes to floors removes one floor); its extra entrances go one by one.
+  function deleteSelection() {
+    var sel = state.moveSel, whole = 0, pts = 0, kept = 0;
+    if (!sel) return;
+    Object.keys(sel).forEach(function (path) {
+      var f = state.docs[path], keys = sel[path];
+      if (!f) return;
+      var all = handlesOf(path, f, state.floor).every(function (h) { return keys.indexOf(h.key) >= 0; });
+      if (f.kind === 'connector') {
+        var extra = keys.filter(function (k) { return k[0] === 'm'; }).map(function (k) { return Number(k.slice(1)); });
+        if (keys.indexOf('s') >= 0) {
+          if (f.floors.length === 1 && all) { deleteFeature(path); whole++; return; }
+          kept++;
+        }
+        if (extra.length) {
+          var more = Object.assign({}, f.more), left = extraEntrances(f, state.floor).filter(function (q, i) { return extra.indexOf(i) < 0; });
+          if (left.length) more[state.floor] = left; else delete more[state.floor];
+          setDoc(path, Object.assign({}, f, { more: more }));
+          pts += extra.length;
+        }
+        return;
+      }
+      if (all) { deleteFeature(path); whole++; return; }
+      var ring = f.kind === 'room' || f.kind === 'area';
+      if (!ring && f.kind !== 'hallway') { kept++; return; }
+      var curves = Object.assign({}, f.curves || {}), points = f.points.slice(), gone = 0;
+      // A boxed curve handle straightens its edge.
+      keys.filter(function (k) { return k[0] === 'c'; }).forEach(function (k) { delete curves[k.slice(1)]; });
+      // Points last to first, so indexes still match; the two edges a point joined lose their curves.
+      keys.filter(function (k) { return k[0] === 'p'; }).map(function (k) { return Number(k.slice(1)); }).sort(function (a, b) { return b - a; }).forEach(function (k) {
+        var m = points.length;
+        if (ring) curves = shiftCurves(curves, [k, (k - 1 + m) % m], k + 1, -1);
+        points.splice(k, 1);
+        gone++;
+      });
+      if (points.length < (ring ? 3 : 2)) { deleteFeature(path); whole++; return; }
+      pts += gone;
+      setDoc(path, withCurves(Object.assign({}, f, { points: points }), ring ? curves : {}));
+    });
+    state.moveSel = null;
+    flash(whole || pts ? 'Deleted ' + [whole ? whole + ' item' + (whole === 1 ? '' : 's') : '', pts ? pts + ' point' + (pts === 1 ? '' : 's') : ''].filter(Boolean).join(' and ') +
+      (kept ? '; kept ' + kept + ' only partly boxed (doors, gates and stairs on other floors go only whole)' : '') + '. Undo puts them back.'
+      : 'Nothing deleted: doors, gates and stairs that serve other floors go only when boxed whole (stairs: use Goes to floors).', !(whole || pts));
+    renderPanels(); scheduleRender();
+  }
   // Pressing on the selection drags it; on a feature, selects and drags that; elsewhere boxes an area.
   function grabMove(p) {
     if (state.spaceHeld) return null;
@@ -4541,6 +4589,7 @@
     if (e.key === 'Escape') { if (state.current) cancelTrace(); else if (state.pendingImage) { state.pendingImage = null; renderPanels(); scheduleRender(); } else if (state.selection) { state.selection = null; renderPanels(); scheduleRender(); } }
     if (e.key === 'Enter' && state.mode === 'hallway') finishHallway();
     if (e.key === 'Backspace' && state.current) { e.preventDefault(); undoPoint(); }
+    if ((e.key === 'Delete' || e.key === 'Backspace') && state.mode === 'move' && state.moveSel) { e.preventDefault(); return deleteSelection(); }
     if ((e.key === 'Delete' || e.key === 'Backspace') && state.selection && !state.current) { e.preventDefault(); var p = state.selection; state.selection = null; deleteFeature(p); }
   });
 
