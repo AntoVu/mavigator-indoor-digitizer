@@ -15,7 +15,8 @@ a person has to check it against the diagrams and fix the rest. That review is t
 ## Reviewing a building
 
 1. Open the tool. Under **Pick a building to review…**, choose one of yours.
-2. Press **Load the auto trace for this building** (in the Save panel).
+2. Press **Load the auto trace for this building** (in the Save panel). If the building feels laggy, press
+   **Simplify shapes (less lag)** next to it: it drops extra points along walls and outlines (Undo puts them back).
 3. Press **Add folder…** and pick the folder you unzipped. Each floor's diagram appears under the trace, already lined
    up. Switch floors with the floor buttons.
 4. Work through that building's list in [REVIEW.md](REVIEW.md), then compare each floor with its diagram:

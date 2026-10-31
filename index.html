@@ -341,7 +341,8 @@
           <button id="btn-save-one" type="button">Save this building</button>
           <button id="btn-copy" type="button">Copy JSON</button>
         </div>
-        <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button></div>
+        <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button>
+          <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button></div>
         <div class="msg" id="save-msg" aria-live="polite"></div>
         <textarea id="json-out" hidden aria-label="indoor-edits.json contents"></textarea>
         <div class="actions">
@@ -1909,6 +1910,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
+    $('btn-simplify').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -4546,6 +4548,50 @@
     one.buildings[abbr] = file.buildings[abbr];
     downloadText(abbr + '.json', formatJson(one) + '\n');
     flash('Saved ' + abbr + '.json. Put it in indoor-reviews/ in the Mavigator repo and open a pull request.', false);
+  });
+  // Douglas-Peucker on a closed ring: drops points within SIMPLIFY_METERS of the line through their neighbors.
+  // The auto traces follow walls pixel by pixel, so corners carry dozens of points, and every redraw and snap
+  // pays for each one. build-site.py does the same to the site's auto traces.
+  var SIMPLIFY_METERS = 0.15;
+  function simplifyRing(ring) {
+    if (ring.length <= 4) return ring;
+    var xy = ring.map(function (p) { return toXY(p.lat, p.lng); }), n = xy.length;
+    var off = function (i, a, b) {
+      var p = xy[i], A = xy[a], B = xy[b % n], dx = B.x - A.x, dy = B.y - A.y, L = dx * dx + dy * dy;
+      var t = L ? Math.max(0, Math.min(1, ((p.x - A.x) * dx + (p.y - A.y) * dy) / L)) : 0;
+      return Math.hypot(p.x - A.x - t * dx, p.y - A.y - t * dy);
+    };
+    var far = 0;
+    xy.forEach(function (p, i) { if (Math.hypot(p.x - xy[0].x, p.y - xy[0].y) > Math.hypot(xy[far].x - xy[0].x, xy[far].y - xy[0].y)) far = i; });
+    var keep = {}, stack = [[0, far], [far, n]];
+    keep[0] = keep[far] = true;
+    while (stack.length) {
+      var s = stack.pop(), a = s[0], b = s[1], best = -1, d = 0;
+      for (var i = a + 1; i < b; i++) { var e = off(i, a, b); if (e > d) { d = e; best = i; } }
+      if (best >= 0 && d > SIMPLIFY_METERS) { keep[best] = true; stack.push([a, best], [best, b]); }
+    }
+    var out = ring.filter(function (p, i) { return keep[i]; });
+    return out.length >= 3 ? out : ring;
+  }
+  // Room walls (but not curved ones: their curves are keyed by edge) and every floor's outline. Not the building
+  // outline, which is drawn by hand. One Undo puts it all back.
+  $('btn-simplify').addEventListener('click', function () {
+    var abbr = state.abbr, before = 0, after = 0;
+    if (!abbr) return;
+    docsIn('features', abbr).forEach(function (x) {
+      if (x.d.kind !== 'room' || x.d.curves || x.d.points.length <= 4) return;
+      var pts = simplifyRing(x.d.points);
+      before += x.d.points.length; after += pts.length;
+      if (pts.length < x.d.points.length) setDoc(x.path, Object.assign({}, x.d, { points: pts }));
+    });
+    docsIn('outlines', abbr).forEach(function (x) {
+      if (x.d.floor === SHAPE) return;
+      var pieces = outlinePieces(x.d).map(function (r) { before += r.length; var s = simplifyRing(r); after += s.length; return s; });
+      setDoc(x.path, { abbr: x.d.abbr, floor: x.d.floor, pieces: pieces });
+    });
+    flash(before === after ? 'Nothing to simplify: every wall is already as lean as it gets.'
+      : 'Simplified ' + nameOf(abbr) + ': ' + before + ' wall and outline points down to ' + after + '. Undo puts them back.', false);
+    renderPanels(); scheduleRender();
   });
   // The script's draft of this building, with each floor's diagram already aligned (auto/<key>.json). Only this
   // building changes; the PDFs come from Add folder as usual, and each layout draws once its PDF is here.
