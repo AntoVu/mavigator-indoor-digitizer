@@ -233,7 +233,7 @@
       <li><b>Add folder</b> and pick <code>tools/indoor/cache/evac/</code> once. Every diagram is filed under its building and floor and kept in this browser, so you don't add them again next time.</li>
       <li><b>Click a building</b> on the campus map. Nedderman, ERB and Woolf are labeled, but any building opens, even just to mark its entrances.</li>
       <li>Each floor's diagrams are grouped into <b>views</b>: diagrams that differ only in the red "you are here" dot are one view. Press <b>Use as layout</b> on each view and <b>Align</b> it: click a corner on the diagram, then the same corner of the outline. Three pairs place it; a fourth shows the fit in meters. Or press <b>Place by hand</b> and drag the diagram itself over the building: inside it to move it, a corner to resize it, an edge&rsquo;s middle dot to stretch it, the round knob to rotate it. <b>Rotate</b> the diagram under it if it is drawn turned. For a point nothing marks, draw <b>rulers</b> (R) on the diagram or the map: guide lines that hold Shift for 45&deg; steps, and clicks snap where they cross. If a grouping is wrong, move a diagram to another view.</li>
-      <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap 45&deg;</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags square with the building; hold Shift to flip it. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
+      <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap angles</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags at 0, 30, 45, 60 or 90&deg; from the floor's diagram (or the leveled wall); hold Shift to flip it. <b>Square to angles&hellip;</b> (Save panel) straightens a whole building's walls the same way. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
       <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
       <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it.</li>
       <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions), or the round knob above the box to rotate it (Shift turns in 15° steps). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
@@ -268,7 +268,7 @@
           <button class="small" id="btn-fit" type="button">Fit</button>
           <button class="small" id="btn-undo" type="button" title="Undo (Ctrl+Z)">Undo</button>
           <button class="small" id="btn-redo" type="button" title="Redo (Ctrl+Y or Ctrl+Shift+Z)">Redo</button>
-          <label class="check" for="snap45" title="Corners, hallways and room walls go straight or at 45 degrees along the building's walls. Hold Shift to flip it."><input type="checkbox" id="snap45">Snap 45&deg;</label>
+          <label class="check" for="snap45" title="Corners, hallways and room walls go at 0, 30, 45, 60 or 90 degrees from the diagram (or the leveled wall). Hold Shift to flip it."><input type="checkbox" id="snap45">Snap angles</label>
           <label class="check" for="snap-features" title="Clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where). Entrances always land on the wall."><input type="checkbox" id="snap-features">Snap to features</label>
           <button class="small toggle" id="btn-level" type="button" aria-pressed="false" title="Click a wall of the outline: the view turns so it is level, and new rooms square to it. View only; nothing saved changes.">Level to a wall</button>
           <button class="small" id="btn-north" type="button" hidden>North up</button>
@@ -342,7 +342,8 @@
           <button id="btn-copy" type="button">Copy JSON</button>
         </div>
         <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button>
-          <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button></div>
+          <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button>
+          <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 30, 45, 60 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button></div>
         <div class="msg" id="save-msg" aria-live="polite"></div>
         <textarea id="json-out" hidden aria-label="indoor-edits.json contents"></textarea>
         <div class="actions">
@@ -1289,11 +1290,96 @@
     });
     return best;
   }
-  // The 45 degree ray (along the walls) from `anchor` closest to `ll`: { a, u } in local meters.
+  // Wall directions, in degrees from the reference angle; a line repeats every 180, so these cover all of 360.
+  var ANGLE_SET = [0, 30, 45, 60, 90, 120, 135, 150], MAX_SQUARE_DEG = 8;
+  // The angle walls square to at a point on a floor: Level to a wall when it is set, else the top edge of the
+  // diagram placed under the point, else the building's longest wall.
+  function refAngle(at, floor) {
+    if (state.abbr && state.turn[state.abbr] != null) return state.turn[state.abbr];
+    var list = layoutsOn(state.abbr, floor).filter(function (l) { return fitOf(l.d); }), pick = null;
+    if (at && at.layout) pick = list.filter(function (l) { return l.d.id === at.layout; })[0];
+    if (!pick && at) pick = list.filter(function (l) { var q = affineToImage(fitOf(l.d), at.lat, at.lng); return q.u >= 0 && q.u <= 1 && q.v >= 0 && q.v <= 1; }).pop();
+    if (!pick) return wallAngle();
+    var A = placementOf(pick.d).A;
+    return Math.atan2(A.y, A.x);
+  }
+  // theta (radians) turned to the nearest allowed direction from ref, keeping its sense. With maxDeg, null when
+  // every allowed direction is further off than that.
+  function snapDirection(theta, ref, maxDeg) {
+    var d = ((theta - ref) * 180 / Math.PI) % 180, best = null;
+    if (d < 0) d += 180;
+    ANGLE_SET.concat([180]).forEach(function (a) { var e = Math.abs(d - a); if (!best || e < best.e) best = { a: a, e: e }; });
+    if (maxDeg != null && best.e > maxDeg) return null;
+    return theta + (best.a - d) * Math.PI / 180;
+  }
+  // The allowed ray (0/30/45/60/90... from the diagram) from `anchor` closest to `ll`: { a, u } in local meters.
   function snapRay(anchor, ll) {
-    var a = toXY(anchor.lat, anchor.lng), p = toXY(ll.lat, ll.lng), base = wallAngle(), step = Math.PI / 4;
-    var dir = base + Math.round((Math.atan2(p.y - a.y, p.x - a.x) - base) / step) * step;
+    var a = toXY(anchor.lat, anchor.lng), p = toXY(ll.lat, ll.lng);
+    var dir = snapDirection(Math.atan2(p.y - a.y, p.x - a.x), refAngle(anchor, state.floor));
     return { a: a, u: { x: Math.cos(dir), y: Math.sin(dir) }, p: p };
+  }
+  // Squares a ring (closed) or a hallway line in local meters. Each edge of 0.3 m or more within MAX_SQUARE_DEG of
+  // an allowed direction turns to it; runs of edges on one direction become one line; each corner moves to where
+  // its two lines meet (kept where they barely meet or the corner would move over 1 m). Every vertex keeps its
+  // index: `drop` marks the ones inside a straight run, which a ring may drop. null when nothing turned.
+  function squareXY(xy, closed, ref) {
+    var n = xy.length, m = closed ? n : n - 1, edges = [];
+    for (var i = 0; i < m; i++) {
+      var a = xy[i], b = xy[(i + 1) % n], len = Math.hypot(b.x - a.x, b.y - a.y), th = Math.atan2(b.y - a.y, b.x - a.x);
+      var dir = len >= 0.3 ? snapDirection(th, ref, MAX_SQUARE_DEG) : null;
+      edges.push({ dir: dir == null ? th : dir, snapped: dir != null, len: len, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } });
+    }
+    if (!edges.some(function (e) { return e.snapped; })) return null;
+    var same = function (e, f) { return e.snapped && f.snapped && Math.abs(Math.sin(e.dir - f.dir)) < 1e-6; };
+    // Group runs of edges; a closed ring's last run may continue into its first.
+    var groups = [], g = null;
+    edges.forEach(function (e, i) { if (g && same(edges[i - 1], e)) g.edges.push(i); else groups.push(g = { edges: [i] }); });
+    if (closed && groups.length > 1 && same(edges[m - 1], edges[0])) { var last = groups.pop(); groups[0].edges = last.edges.concat(groups[0].edges); }
+    if (closed && groups.length < 3) return null;
+    groups.forEach(function (gr) {
+      var w = 0, x = 0, y = 0;
+      gr.edges.forEach(function (i) { var e = edges[i], k = e.len || 1e-6; w += k; x += e.mid.x * k; y += e.mid.y * k; });
+      gr.p = { x: x / w, y: y / w }; gr.d = { x: Math.cos(edges[gr.edges[0]].dir), y: Math.sin(edges[gr.edges[0]].dir) };
+    });
+    var onto = function (gr, q) { var t = (q.x - gr.p.x) * gr.d.x + (q.y - gr.p.y) * gr.d.y; return { x: gr.p.x + gr.d.x * t, y: gr.p.y + gr.d.y * t }; };
+    var meet = function (g1, g2, orig) {
+      var cross = g1.d.x * g2.d.y - g1.d.y * g2.d.x;
+      if (Math.abs(cross) < Math.sin(Math.PI / 180)) return orig;
+      var t = ((g2.p.x - g1.p.x) * g2.d.y - (g2.p.y - g1.p.y) * g2.d.x) / cross, q = { x: g1.p.x + g1.d.x * t, y: g1.p.y + g1.d.y * t };
+      return Math.hypot(q.x - orig.x, q.y - orig.y) > 1 ? orig : q;
+    };
+    var out = xy.slice(), drop = xy.map(function () { return false; });
+    groups.forEach(function (gr, k) {
+      gr.edges.slice(1).forEach(function (i) { out[i] = onto(gr, xy[i]); drop[i] = true; });  // inside the run
+      var start = gr.edges[0];
+      if (k > 0 || closed) out[start] = meet(groups[(k - 1 + groups.length) % groups.length], gr, xy[start]);
+      else out[start] = onto(gr, xy[start]);  // a hallway's first end slides along its new line
+    });
+    if (!closed) out[n - 1] = onto(groups[groups.length - 1], xy[n - 1]);
+    return { xy: out, drop: drop, turned: groups.filter(function (gr) { return edges[gr.edges[0]].snapped; }).length };
+  }
+  function ringAreaXY(r) { var s = 0; r.forEach(function (p, i) { var q = r[(i + 1) % r.length]; s += p.x * q.y - q.x * p.y; }); return Math.abs(s) / 2; }
+  function ringCrossesItself(r) {
+    var n = r.length;
+    for (var i = 0; i < n; i++) for (var j = i + 2; j < n; j++) {
+      if (i === 0 && j === n - 1) continue;
+      var a = r[i], b = r[(i + 1) % n], c = r[j], d = r[(j + 1) % n];
+      var o = function (p, q, s) { return (q.x - p.x) * (s.y - p.y) - (q.y - p.y) * (s.x - p.x); };
+      if (o(a, b, c) * o(a, b, d) < 0 && o(c, d, a) * o(c, d, b) < 0) return true;
+    }
+    return false;
+  }
+  // A room wall or floor outline squared: simplified first (pixel noise would square into a staircase), then
+  // squared, then checked. Returns the new points or null (unchanged, or the result would cross itself, lose
+  // corners or change area by over 10%).
+  function squareRing(ring, floor) {
+    var simple = simplifyRing(ring), xy = simple.map(function (p) { return toXY(p.lat, p.lng); });
+    var sq = squareXY(xy, true, refAngle(simple[0], floor));
+    if (!sq) return null;
+    var keep = sq.xy.filter(function (p, i) { return !sq.drop[i]; });
+    var area = ringAreaXY(xy);
+    if (keep.length < 3 || ringCrossesItself(keep) || Math.abs(ringAreaXY(keep) - area) > 0.1 * area) return null;
+    return keep.map(function (p) { return pointAt(fromXY(p.x, p.y)); });
   }
   function snapFrom(anchor, ll) {
     var r = snapRay(anchor, ll), t = (r.p.x - r.a.x) * r.u.x + (r.p.y - r.a.y) * r.u.y;
@@ -1910,7 +1996,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
-    $('btn-simplify').hidden = !(abbr && featuresOf(abbr).length);
+    $('btn-simplify').hidden = $('btn-square').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -2201,7 +2287,7 @@
       }
       body.appendChild(el('p', { class: 'meta', text: 'Click where it is on floor ' + state.floor + '. The app shows it on the indoor map.' }));
     } else if (state.mode === 'move') {
-      body.appendChild(el('p', { class: 'meta', text: 'Drag anything on floor ' + state.floor + ' to move it: a door, an entrance, an object, a stairwell or restroom (with its walls), a hallway, a room. Drag on an empty spot to box an area: every point inside is selected, then drag the selection to move it all together, or drag a corner square of its dashed box to resize it all (Shift keeps the proportions) or the round knob above it to rotate it (Shift: 15° steps). A hallway or room only partly inside stretches. Hold Space and drag to pan. With Snap 45\u00b0 on (Shift flips it) moves go along the walls. The floor outline has its own tool.' }));
+      body.appendChild(el('p', { class: 'meta', text: 'Drag anything on floor ' + state.floor + ' to move it: a door, an entrance, an object, a stairwell or restroom (with its walls), a hallway, a room. Drag on an empty spot to box an area: every point inside is selected, then drag the selection to move it all together, or drag a corner square of its dashed box to resize it all (Shift keeps the proportions) or the round knob above it to rotate it (Shift: 15° steps). A hallway or room only partly inside stretches. Hold Space and drag to pan. With Snap angles on (Shift flips it) moves go at 0, 30, 45, 60 or 90\u00b0 from the diagram. The floor outline has its own tool.' }));
       var nSel = selectionHandles().length;
       if (nSel) body.appendChild(el('div', { class: 'actions' }, [el('span', { class: 'meta', text: nSel + ' point(s) in ' + Object.keys(state.moveSel).length + ' feature(s) selected.' }),
         button('Copy (Ctrl+C)', copySelection), button('Clear', function () { state.moveSel = null; renderPanels(); scheduleRender(); })]));
@@ -2304,7 +2390,7 @@
       var pl = placingDoc();
       if (!pl) body.appendChild(el('p', { class: 'meta', text: 'Press Place by hand on a layout in Diagrams.' }));
       else {
-        body.appendChild(el('p', { class: 'meta', text: 'Placing ' + pl.name + ' over the building. Drag inside it to move it, a corner to resize it (it keeps its shape), an edge\u2019s middle dot to stretch it one way, and the round knob to rotate it (in 45\u00b0 steps from the walls while Snap 45\u00b0 is on; Shift flips that). Drag outside it to pan. Its opacity slider is in its row under Diagrams.' }));
+        body.appendChild(el('p', { class: 'meta', text: 'Placing ' + pl.name + ' over the building. Drag inside it to move it, a corner to resize it (it keeps its shape), an edge\u2019s middle dot to stretch it one way, and the round knob to rotate it (in 45\u00b0 steps from the walls while Snap angles is on; Shift flips that). Drag outside it to pan. Its opacity slider is in its row under Diagrams.' }));
         if (!imageFor(state.placing)) body.appendChild(el('p', { class: 'meta', text: 'Its picture is not in this browser yet: add the building\u2019s diagrams (Add folder\u2026) to see it.' }));
         var carryBox = el('input', { type: 'checkbox', id: 'place-carry', checked: state.placeCarry || null });
         carryBox.addEventListener('change', function () { state.placeCarry = carryBox.checked; });
@@ -3232,7 +3318,7 @@
   // moves onto the line through the nearest corner within GUIDE_PX (each direction on its own), and a
   // guide is drawn from that corner. { d, ll, guides: [{ a, b }] } or null.
   function alignGuides(pos, corners) {
-    var t = wallAngle(), ux = Math.cos(t), uy = Math.sin(t), cur = fromScreen(pos.x, pos.y), P = toXY(cur.lat, cur.lng);
+    var cur = fromScreen(pos.x, pos.y), t = refAngle(cur, state.floor), ux = Math.cos(t), uy = Math.sin(t), P = toXY(cur.lat, cur.lng);
     var pu = P.x * ux + P.y * uy, pv = P.y * ux - P.x * uy, bu = null, bv = null;
     // On a tie (corners on the same line), the guide starts at the nearer one.
     var better = function (b, d, far) { return d <= GUIDE_PX && (!b || d < b.d - 0.5 || (Math.abs(d - b.d) <= 0.5 && far < b.far)); };
@@ -3247,9 +3333,9 @@
     return { d: Math.min(bu ? bu.d : Infinity, bv ? bv.d : Infinity), ll: ll,
       guides: [bu, bv].filter(Boolean).map(function (b) { return { a: { lat: b.from.lat, lng: b.from.lng }, b: ll }; }) };
   }
-  // A box from corner a to the opposite corner b, square to the building's walls; null if too thin.
+  // A box from corner a to the opposite corner b, square to the diagram (or the building's walls); null if too thin.
   function boxCorners(a, b) {
-    var t = wallAngle(), ux = Math.cos(t), uy = Math.sin(t), A = toXY(a.lat, a.lng), B = toXY(b.lat, b.lng);
+    var t = refAngle(a, state.floor), ux = Math.cos(t), uy = Math.sin(t), A = toXY(a.lat, a.lng), B = toXY(b.lat, b.lng);
     var du = (B.x - A.x) * ux + (B.y - A.y) * uy, dv = (B.y - A.y) * ux - (B.x - A.x) * uy;
     if (Math.abs(du) < 0.5 || Math.abs(dv) < 0.5) return null;
     return [a, fromXY(A.x + du * ux, A.y + du * uy), b, fromXY(A.x - dv * uy, A.y + dv * ux)];
@@ -3855,7 +3941,7 @@
         if (snapped) { var t = toXY(snapped.ll.lat, snapped.ll.lng); dx = t.x - anchor.xy.x; dy = t.y - anchor.xy.y; }
         // Along the walls, in 45 degree steps from them, with the snap on.
         else if (snapOn()) {
-          var base = wallAngle(), dir = base + Math.round((Math.atan2(dy, dx) - base) / (Math.PI / 4)) * (Math.PI / 4), len = dx * Math.cos(dir) + dy * Math.sin(dir);
+          var dir = snapDirection(Math.atan2(dy, dx), refAngle(fromScreen(p.x, p.y), state.floor)), len = dx * Math.cos(dir) + dy * Math.sin(dir);
           dx = len * Math.cos(dir); dy = len * Math.sin(dir);
         }
         Object.keys(sel).forEach(function (path) {
@@ -4593,6 +4679,88 @@
       : 'Simplified ' + nameOf(abbr) + ': ' + before + ' wall and outline points down to ' + after + '. Undo puts them back.', false);
     renderPanels(); scheduleRender();
   });
+  // Hallways squared together. A hallway point that touched another hallway (its vertex, or its line) within
+  // 0.5 m before is put back on that hallway afterwards, so junctions stay joined. Returns { path: points }.
+  function squareHallways(list) {
+    var xy = {}, next = {}, touches = [];
+    list.forEach(function (x) { xy[x.path] = x.d.points.map(function (p) { return toXY(p.lat, p.lng); }); });
+    list.forEach(function (x) {
+      xy[x.path].forEach(function (P, k) {
+        var best = null;
+        list.forEach(function (y) {
+          if (y.path === x.path) return;
+          xy[y.path].forEach(function (Q, j) {
+            var d = Math.hypot(P.x - Q.x, P.y - Q.y);
+            // A shared vertex moves once: the hallway sorted later follows the other.
+            if (d <= 0.5 && x.path > y.path && (!best || d < best.d)) best = { d: d, path: y.path, vertex: j };
+            var R = xy[y.path][j + 1];
+            if (!R) return;
+            var dx = R.x - Q.x, dy = R.y - Q.y, L = dx * dx + dy * dy, t = L ? ((P.x - Q.x) * dx + (P.y - Q.y) * dy) / L : 0;
+            if (t <= 0.02 || t >= 0.98) return;
+            var e = Math.hypot(P.x - Q.x - t * dx, P.y - Q.y - t * dy);
+            if (e <= 0.5 && (!best || e < best.d - 0.05)) best = { d: e, path: y.path, seg: j };
+          });
+        });
+        if (best) touches.push({ path: x.path, k: k, to: best });
+      });
+      var sq = squareXY(xy[x.path], false, refAngle(x.d.points[0], x.d.floor));
+      next[x.path] = sq ? sq.xy : xy[x.path];
+    });
+    touches.forEach(function (t) {
+      var other = next[t.to.path], P = next[t.path][t.k];
+      if (t.to.vertex != null) { next[t.path][t.k] = other[t.to.vertex]; return; }
+      var Q = other[t.to.seg], R = other[t.to.seg + 1], dx = R.x - Q.x, dy = R.y - Q.y, L = dx * dx + dy * dy;
+      var u = L ? Math.max(0, Math.min(1, ((P.x - Q.x) * dx + (P.y - Q.y) * dy) / L)) : 0;
+      next[t.path][t.k] = { x: Q.x + u * dx, y: Q.y + u * dy };
+    });
+    var out = {};
+    list.forEach(function (x) { out[x.path] = next[x.path].map(function (p) { return pointAt(fromXY(p.x, p.y)); }); });
+    return out;
+  }
+  // Square to angles: a small panel of what to square, then one go (one Undo).
+  $('btn-square').addEventListener('click', function () {
+    var abbr = state.abbr, slot = $('confirm-slot');
+    if (!abbr) return;
+    var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
+    var rooms = box('sq-rooms', 'Rooms (with restrooms, stairwells, elevators and solid blocks)', true);
+    var outlines = box('sq-outlines', 'Floor outlines', false);
+    var halls = box('sq-halls', 'Hallways (they carry the routes: check the junction rings after)', false);
+    var every = box('sq-every', 'Every floor, not just floor ' + state.floor, !state.floor || state.floor === SHAPE);
+    slot.innerHTML = '';
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: 'Square' + nameOf(abbr) + '’s walls to 0, 30, 45, 60 and 90° from each floor’s diagram (or the leveled wall). Walls more than ' + MAX_SQUARE_DEG + '° off every angle stay as they are.' }),
+      rooms.row, outlines.row, halls.row, every.row,
+      el('div', { class: 'actions' }, [
+        button('Square', function () { slot.innerHTML = ''; squareBuilding(abbr, rooms.input.checked, outlines.input.checked, halls.input.checked, every.input.checked); }, 'primary'),
+        button('Cancel', function () { slot.innerHTML = ''; })
+      ])]));
+    slot.scrollIntoView({ block: 'nearest' });
+  });
+  function squareBuilding(abbr, doRooms, doOutlines, doHalls, everyFloor) {
+    var onFl = function (f) { return everyFloor || f === state.floor; }, nRooms = 0, alone = 0, nOut = 0, nHalls = 0;
+    if (doRooms) docsIn('features', abbr).forEach(function (x) {
+      if (x.d.kind !== 'room' || x.d.curves || !onFl(x.d.floor)) return;
+      var pts = squareRing(x.d.points, x.d.floor);
+      if (pts) { setDoc(x.path, Object.assign({}, x.d, { points: pts })); nRooms++; } else alone++;
+    });
+    if (doOutlines) docsIn('outlines', abbr).forEach(function (x) {
+      if (x.d.floor === SHAPE || !onFl(x.d.floor)) return;
+      var changed = false, pieces = outlinePieces(x.d).map(function (r) { var s = squareRing(r, x.d.floor); if (s) changed = true; return s || r; });
+      if (changed) { setDoc(x.path, { abbr: x.d.abbr, floor: x.d.floor, pieces: pieces }); nOut++; }
+    });
+    if (doHalls) {
+      var byFloor = {};
+      docsIn('features', abbr).forEach(function (x) { if (x.d.kind === 'hallway' && onFl(x.d.floor)) (byFloor[x.d.floor] = byFloor[x.d.floor] || []).push(x); });
+      Object.keys(byFloor).forEach(function (fl) {
+        var moved = squareHallways(byFloor[fl]);
+        var at = function (pts) { return JSON.stringify(pts.map(function (p) { return [p.lat.toFixed(9), p.lng.toFixed(9)]; })); };
+        byFloor[fl].forEach(function (x) { if (at(x.d.points) !== at(moved[x.path])) { setDoc(x.path, Object.assign({}, x.d, { points: moved[x.path] })); nHalls++; } });
+      });
+    }
+    flash('Squared ' + nRooms + ' room' + (nRooms === 1 ? '' : 's') + (alone ? ' (' + alone + ' left alone: no wall near an angle, or squaring would bend them)' : '') +
+      ', ' + nOut + ' floor outline' + (nOut === 1 ? '' : 's') + ', ' + nHalls + ' hallway' + (nHalls === 1 ? '' : 's') + '. Undo puts them back.', false);
+    renderPanels(); scheduleRender();
+  }
   // The script's draft of this building, with each floor's diagram already aligned (auto/<key>.json). Only this
   // building changes; the PDFs come from Add folder as usual, and each layout draws once its PDF is here.
   $('btn-auto').addEventListener('click', function () {

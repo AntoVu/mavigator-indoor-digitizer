@@ -23,6 +23,10 @@ a person has to check it against the diagrams and fix the rest. That review is t
    missing rooms, misread room numbers, doors in the wrong place, hallways that don't connect, stairs that skip a
    floor. **How this works** at the top of the tool explains each drawing tool. The **Checklist** panel lists what the
    tool itself finds wrong; aim to empty it.
+
+   To straighten crooked walls, press **Square to angles…** (next to Simplify) once the diagram sits right. It turns
+   walls to 0, 30, 45, 60 or 90° from the diagram. Rooms are always safe to square. Square hallways only after
+   joining any hallway gaps (the dashed orange lines), and check the junction rings after. Undo puts everything back.
 5. Press **Save this building**. It downloads `<building>.json` (for example `SH.json`).
 6. In the Mavigator repo, all your buildings go on one branch of your own, one commit per building named after it.
    The first time:
