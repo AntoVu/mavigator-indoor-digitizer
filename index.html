@@ -343,7 +343,8 @@
         </div>
         <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button>
           <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button>
-          <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 30, 45, 60 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button></div>
+          <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 30, 45, 60 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button>
+          <button class="small" id="btn-gaps" type="button" hidden title="Grows rooms across the wall gaps the script leaves: neighbors meet in the middle, and rooms reach the floor outline. Never crosses a hallway. Undo puts them back.">Close wall gaps…</button></div>
         <div class="msg" id="save-msg" aria-live="polite"></div>
         <textarea id="json-out" hidden aria-label="indoor-edits.json contents"></textarea>
         <div class="actions">
@@ -1098,10 +1099,12 @@
     setDoc(path, next);
     reproject(path);
   }
-  // The aligned layout under a map point, for recording where a traced point sits on its diagram.
-  function layoutUnder(ll) {
-    if (!state.abbr || !state.floor) return null;
-    var list = layoutsOn(state.abbr, state.floor);
+  // The aligned layout under a map point, for recording where a traced point sits on its diagram. `floor` defaults
+  // to the open one; tools that edit every floor pass the point's own.
+  function layoutUnder(ll, floor) {
+    floor = floor || state.floor;
+    if (!state.abbr || !floor) return null;
+    var list = layoutsOn(state.abbr, floor);
     for (var i = list.length - 1; i >= 0; i--) {
       var g = fitOf(list[i].d);
       if (!g) continue;
@@ -1110,8 +1113,10 @@
     }
     return null;
   }
-  function pointAt(ll) {
-    var p = { lat: ll.lat, lng: ll.lng }, lay = layoutUnder(ll);
+  // One argument only: callers pass it straight to map(), which adds an index.
+  function pointAt(ll) { return pointOn(ll, state.floor); }
+  function pointOn(ll, floor) {
+    var p = { lat: ll.lat, lng: ll.lng }, lay = layoutUnder(ll, floor);
     if (lay) { p.layout = lay.id; p.u = lay.u; p.v = lay.v; }
     return p;
   }
@@ -1379,7 +1384,119 @@
     var keep = sq.xy.filter(function (p, i) { return !sq.drop[i]; });
     var area = ringAreaXY(xy);
     if (keep.length < 3 || ringCrossesItself(keep) || Math.abs(ringAreaXY(keep) - area) > 0.1 * area) return null;
-    return keep.map(function (p) { return pointAt(fromXY(p.x, p.y)); });
+    return keep.map(function (p) { return pointOn(fromXY(p.x, p.y), floor); });
+  }
+  // ---- closing wall gaps -----------------------------------------------------------------------------
+  // The auto traces draw each room inside its walls' ink, so neighbors sit a wall's thickness apart. growRingsXY
+  // grows rooms (local meters) until they meet: an edge facing other rooms moves out half the gap (meeting in the
+  // middle); one facing a solid block or the floor outline moves the whole way. An edge moves only when what it
+  // faces covers GAP_COVER of its length at one distance within the limit, and never across a traced hallway.
+  // rooms: [{ xy, fixed }] (fixed ones, solids and curved rooms, are met fully but never move). Returns per room
+  // { xy (null when unchanged), met, flush, blocked, alone }.
+  var GAP_COVER = 0.6, GAP_COS = Math.cos(5 * Math.PI / 180);
+  function ringSign(r) { var s = 0; r.forEach(function (p, i) { var q = r[(i + 1) % r.length]; s += p.x * q.y - q.x * p.y; }); return s >= 0 ? 1 : -1; }
+  // Each edge with its unit direction u and outward normal n.
+  function ringEdges(r) {
+    var sign = ringSign(r);
+    return r.map(function (a, i) {
+      var b = r[(i + 1) % r.length], L = Math.hypot(b.x - a.x, b.y - a.y), u = L ? { x: (b.x - a.x) / L, y: (b.y - a.y) / L } : { x: 0, y: 0 };
+      return { a: a, b: b, L: L, u: u, n: { x: sign * u.y, y: -sign * u.x } };
+    });
+  }
+  // How edge f faces edge e from e's outer side: { d (gap), lo, hi (the stretch of e it covers) } or null. A
+  // neighbor's wall faces back (normals opposite); the floor outline faces the same way (both point out).
+  function facing(e, f, sameWay, max) {
+    var dot = e.n.x * f.n.x + e.n.y * f.n.y;
+    if (sameWay ? dot < GAP_COS : dot > -GAP_COS) return null;
+    var da = (f.a.x - e.a.x) * e.n.x + (f.a.y - e.a.y) * e.n.y, db = (f.b.x - e.a.x) * e.n.x + (f.b.y - e.a.y) * e.n.y, d = (da + db) / 2;
+    if (d < -0.05 || d > max) return null;
+    var ta = (f.a.x - e.a.x) * e.u.x + (f.a.y - e.a.y) * e.u.y, tb = (f.b.x - e.a.x) * e.u.x + (f.b.y - e.a.y) * e.u.y;
+    var lo = Math.max(0, Math.min(ta, tb)), hi = Math.min(e.L, Math.max(ta, tb));
+    return hi - lo > 0.05 ? { d: d, lo: lo, hi: hi } : null;
+  }
+  function coverOf(list) {
+    var s = list.slice().sort(function (p, q) { return p.lo - q.lo; }), len = 0, end = -Infinity;
+    s.forEach(function (c) { if (c.hi > end) { len += c.hi - Math.max(c.lo, end); end = c.hi; } });
+    return len;
+  }
+  function segsCross(p, q, r, s) {
+    var o = function (a, b, c) { return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x); };
+    return o(p, q, r) * o(p, q, s) < 0 && o(r, s, p) * o(r, s, q) < 0;
+  }
+  function inRing(pt, r) {
+    var inside = false;
+    for (var i = 0, j = r.length - 1; i < r.length; j = i++) {
+      var a = r[i], b = r[j];
+      if ((a.y > pt.y) !== (b.y > pt.y) && pt.x < (b.x - a.x) * (pt.y - a.y) / (b.y - a.y) + a.x) inside = !inside;
+    }
+    return inside;
+  }
+  function growRingsXY(rooms, outlines, halls, opts) {
+    var E = rooms.map(function (r) { return ringEdges(r.xy); }), O = [];
+    outlines.forEach(function (r) { O = O.concat(ringEdges(r)); });
+    var segs = [];
+    halls.forEach(function (h) { for (var i = 0; i + 1 < h.length; i++) segs.push([h[i], h[i + 1]]); });
+    var centroid = function (r) { var x = 0, y = 0; r.forEach(function (p) { x += p.x; y += p.y; }); return { x: x / r.length, y: y / r.length }; };
+    var labels = rooms.map(function (r) { var c = centroid(r.xy); return inRing(c, r.xy) ? c : null; });
+    var maxMove = Math.max(opts.meet ? opts.roomMax : 0, opts.outline ? opts.outlineMax : 0);
+    // First what each edge faces and how far: { D, cl, full, outline } or { blocked } or null.
+    var plans = rooms.map(function (room, i) {
+      if (room.fixed) return [];
+      return E[i].map(function (e) {
+        if (e.L < 0.5) return null;
+        var cands = [];
+        if (opts.meet) rooms.forEach(function (other, j) {
+          if (j === i) return;
+          E[j].forEach(function (f, k) { var c = f.L >= 0.3 && facing(e, f, false, opts.roomMax); if (c) { c.full = !!other.fixed; c.j = j; c.k = k; cands.push(c); } });
+        });
+        if (opts.outline) O.forEach(function (f) { var c = f.L >= 0.3 && facing(e, f, true, opts.outlineMax); if (c) { c.full = true; c.outline = true; cands.push(c); } });
+        // The distance most of the edge faces: the cluster (within 0.1 m) covering the most of it.
+        var best = null;
+        cands.forEach(function (c0) {
+          var cl = cands.filter(function (c) { return Math.abs(c.d - c0.d) <= 0.1; }), cov = coverOf(cl);
+          if (!best || cov > best.cov + 1e-9 || (Math.abs(cov - best.cov) <= 1e-9 && c0.d < best.d0)) best = { cl: cl, cov: cov, d0: c0.d };
+        });
+        if (!best || best.cov < GAP_COVER * e.L) return null;
+        var ds = best.cl.map(function (c) { return c.d; }).sort(function (p, q) { return p - q; }), D = ds[ds.length >> 1];
+        if (D <= 0.02) return null;
+        // Never across a traced hallway: none may cross the gap this edge faces.
+        var far = [e.a, e.b, { x: e.b.x + e.n.x * D, y: e.b.y + e.n.y * D }, { x: e.a.x + e.n.x * D, y: e.a.y + e.n.y * D }];
+        if (segs.some(function (s) { return inRing(s[0], far) || inRing(s[1], far) || far.some(function (p, k) { return segsCross(s[0], s[1], p, far[(k + 1) % 4]); }); })) return { blocked: true };
+        return { D: D, cl: best.cl, full: best.cl.every(function (c) { return c.full; }), outline: best.cl.some(function (c) { return c.outline; }) };
+      });
+    });
+    var moves = function (c) { var p = plans[c.j][c.k]; return p && p.D; };
+    return rooms.map(function (room, i) {
+      var res = { xy: null, met: 0, flush: 0, blocked: 0, alone: false };
+      if (room.fixed) return res;
+      // Half the gap when the neighbors' facing walls move too (they meet in the middle); else the whole way.
+      var shift = plans[i].map(function (p) {
+        if (!p) return 0;
+        if (p.blocked) { res.blocked++; return 0; }
+        if (p.full && p.outline) res.flush++; else res.met++;
+        return p.full || !p.cl.filter(function (c) { return !c.full; }).every(moves) ? p.D : p.D / 2;
+      });
+      if (!shift.some(Boolean)) return res;
+      // Rebuild: each corner where its two (shifted) walls meet; a jog between parallel walls keeps both ends.
+      var r = room.xy, n = r.length, out = [];
+      for (var k = 0; k < n; k++) {
+        var e1 = E[i][(k - 1 + n) % n], e2 = E[i][k], s1 = shift[(k - 1 + n) % n], s2 = shift[k], v = r[k];
+        if (!s1 && !s2) { out.push(v); continue; }
+        var p1 = { x: v.x + e1.n.x * s1, y: v.y + e1.n.y * s1 }, p2 = { x: v.x + e2.n.x * s2, y: v.y + e2.n.y * s2 };
+        var cross = e1.u.x * e2.u.y - e1.u.y * e2.u.x;
+        if (Math.abs(cross) >= Math.sin(10 * Math.PI / 180)) {
+          var t = ((p2.x - p1.x) * e2.u.y - (p2.y - p1.y) * e2.u.x) / cross, q = { x: p1.x + e1.u.x * t, y: p1.y + e1.u.y * t };
+          if (Math.hypot(q.x - v.x, q.y - v.y) <= 1.5 * maxMove + 0.01) { out.push(q); continue; }
+        }
+        out.push(p1);
+        if (Math.hypot(p2.x - p1.x, p2.y - p1.y) > 0.01) out.push(p2);
+      }
+      var a0 = ringAreaXY(r), a1 = ringAreaXY(out);
+      var swallows = labels.some(function (c, j) { return c && j !== i && !inRing(c, r) && inRing(c, out); });
+      if (out.length < 3 || ringCrossesItself(out) || a1 > 1.5 * a0 || a1 < a0 || swallows) { res.alone = true; res.met = res.flush = 0; return res; }
+      res.xy = out;
+      return res;
+    });
   }
   function snapFrom(anchor, ll) {
     var r = snapRay(anchor, ll), t = (r.p.x - r.a.x) * r.u.x + (r.p.y - r.a.y) * r.u.y;
@@ -1996,7 +2113,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
-    $('btn-simplify').hidden = $('btn-square').hidden = !(abbr && featuresOf(abbr).length);
+    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -4714,7 +4831,7 @@
       next[t.path][t.k] = { x: Q.x + u * dx, y: Q.y + u * dy };
     });
     var out = {};
-    list.forEach(function (x) { out[x.path] = next[x.path].map(function (p) { return pointAt(fromXY(p.x, p.y)); }); });
+    list.forEach(function (x) { out[x.path] = next[x.path].map(function (p) { return pointOn(fromXY(p.x, p.y), x.d.floor); }); });
     return out;
   }
   // Square to angles: a small panel of what to square, then one go (one Undo).
@@ -4759,6 +4876,52 @@
     }
     flash('Squared ' + nRooms + ' room' + (nRooms === 1 ? '' : 's') + (alone ? ' (' + alone + ' left alone: no wall near an angle, or squaring would bend them)' : '') +
       ', ' + nOut + ' floor outline' + (nOut === 1 ? '' : 's') + ', ' + nHalls + ' hallway' + (nHalls === 1 ? '' : 's') + '. Undo puts them back.', false);
+    renderPanels(); scheduleRender();
+  }
+  // Close wall gaps: a small panel of what to close and how far, then one go (one Undo).
+  $('btn-gaps').addEventListener('click', function () {
+    var abbr = state.abbr, slot = $('confirm-slot');
+    if (!abbr) return;
+    var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
+    var num = function (id, v) { return el('input', { type: 'number', id: id, value: String(v), min: '0.05', max: '2', step: '0.05', style: 'width: 5em', 'aria-label': 'meters' }); };
+    var meet = box('gap-meet', 'Meet neighboring rooms in the middle', true), meetMax = num('gap-meet-max', 0.6);
+    var outl = box('gap-outline', 'Extend rooms to the floor outline', true), outlMax = num('gap-outline-max', 0.8);
+    var every = box('gap-every', 'Every floor, not just floor ' + state.floor, !state.floor || state.floor === SHAPE);
+    meet.row.appendChild(el('span', {}, [' up to ', meetMax, ' m']));
+    outl.row.appendChild(el('span', {}, [' up to ', outlMax, ' m']));
+    slot.innerHTML = '';
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: 'Grow ' + nameOf(abbr) + '’s rooms across the wall gaps the script leaves. Gaps wider than the limit (hallways) and any traced hallway are never crossed; a wall only partly facing a neighbor stays. Square to angles first for the best fit.' }),
+      meet.row, outl.row, every.row,
+      el('div', { class: 'actions' }, [
+        button('Close gaps', function () {
+          var o = { meet: meet.input.checked, outline: outl.input.checked, roomMax: Math.min(2, Math.max(0.05, Number(meetMax.value) || 0.6)), outlineMax: Math.min(2, Math.max(0.05, Number(outlMax.value) || 0.8)) };
+          slot.innerHTML = '';
+          closeGaps(abbr, o, every.input.checked);
+        }, 'primary'),
+        button('Cancel', function () { slot.innerHTML = ''; })
+      ])]));
+    slot.scrollIntoView({ block: 'nearest' });
+  });
+  function closeGaps(abbr, opts, everyFloor) {
+    if (!opts.meet && !opts.outline) return flash('Pick at least one of the two.', true);
+    var floors = everyFloor ? floorsOf(abbr) : [state.floor], rooms = 0, met = 0, flush = 0, blocked = 0, alone = 0;
+    floors.forEach(function (floor) {
+      var feats = docsIn('features', abbr).filter(function (x) { return x.d.kind === 'room' && x.d.floor === floor && x.d.points.length >= 3; });
+      var xy = function (pts) { return pts.map(function (p) { return toXY(p.lat, p.lng); }); };
+      var outlines = (floorOutlineOf(abbr, floor) || buildingRings(abbr)).map(xy);
+      var halls = docsIn('features', abbr).filter(function (x) { return x.d.kind === 'hallway' && x.d.floor === floor; }).map(function (x) { return xy(x.d.points); });
+      var res = growRingsXY(feats.map(function (x) { return { xy: xy(x.d.points), fixed: !!(x.d.solid || x.d.curves) }; }), outlines, halls, opts);
+      res.forEach(function (r, i) {
+        met += r.met; flush += r.flush; blocked += r.blocked; if (r.alone) alone++;
+        if (!r.xy) return;
+        rooms++;
+        setDoc(feats[i].path, Object.assign({}, feats[i].d, { points: r.xy.map(function (p) { return pointOn(fromXY(p.x, p.y), floor); }) }));
+      });
+    });
+    flash(rooms ? 'Closed gaps on ' + rooms + ' room' + (rooms === 1 ? '' : 's') + ': ' + met + ' wall' + (met === 1 ? '' : 's') + ' met a neighbor, ' + flush + ' reached the outline' +
+      (blocked || alone ? ' (' + [blocked ? blocked + ' stopped by a hallway' : '', alone ? alone + ' room' + (alone === 1 ? '' : 's') + ' left alone: growing would bend or overlap them' : ''].filter(Boolean).join(', ') + ')' : '') + '. Undo puts them back.'
+      : 'No gaps to close within those limits.', false);
     renderPanels(); scheduleRender();
   }
   // The script's draft of this building, with each floor's diagram already aligned (auto/<key>.json). Only this

@@ -27,6 +27,11 @@ a person has to check it against the diagrams and fix the rest. That review is t
    To straighten crooked walls, press **Square to angles…** (next to Simplify) once the diagram sits right. It turns
    walls to 0, 30, 45, 60 or 90° from the diagram. Rooms are always safe to square. Square hallways only after
    joining any hallway gaps (the dashed orange lines), and check the junction rings after. Undo puts everything back.
+
+   Then press **Close wall gaps…**: rooms grow across the wall-thick gaps the script leaves, so neighbors meet in the
+   middle and rooms reach the floor outline. It never crosses a hallway or a gap wider than its limit (0.6 m between
+   rooms, 0.8 m to the outline). Best order: place the diagram, then Simplify, Square to angles, Close wall gaps, and
+   fix the details last.
 5. Press **Save this building**. It downloads `<building>.json` (for example `SH.json`).
 6. In the Mavigator repo, all your buildings go on one branch of your own, one commit per building named after it.
    The first time:
