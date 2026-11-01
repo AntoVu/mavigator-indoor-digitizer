@@ -3485,16 +3485,37 @@
     corners.forEach(function (p) { var q = toScreen(p.lat, p.lng); consider(p, Math.hypot(q.x - pos.x, q.y - pos.y)); });
     if (best) return best;
     // A wall or room edge within reach before the smart guides: with many corners some guide almost always lines
-    // up, and checked first it kept corners off the floor outline.
+    // up, and checked first it kept corners off the floor outline. On an edge, the corner still slides along it to
+    // where a guide lines up (slideToGuide), so it stops under a corner instead of moving freely along the wall.
+    var edge = null;
     var onLine = function (line) {
       for (var k = 1; k < line.length; k++) {
         var a = toScreen(line[k - 1].lat, line[k - 1].lng), b = toScreen(line[k].lat, line[k].lng), pr = segProject(pos, a, b);
+        if (pr.distance <= SNAP_PX && (!best || pr.distance < best.d)) edge = { a: line[k - 1], b: line[k] };
         consider(fromScreen(pr.point.x, pr.point.y), pr.distance);
       }
     };
     rooms.forEach(function (x) { if (!(skip && x.path === skip.path)) x.d.points.forEach(function (_, i) { onLine(edgeSamples(x.d, i)); }); });
     if (!exclude.walls) wallRings().forEach(function (ring) { onLine(ring.concat([ring[0]])); });
-    return best || alignGuides(pos, corners);
+    if (best) return slideToGuide(pos, best, edge, corners) || best;
+    return alignGuides(pos, corners);
+  }
+  // A corner on an edge, moved along that edge to where it lines up with another corner (a guide), when that is
+  // near the pointer; else null.
+  function slideToGuide(pos, onEdge, edge, corners) {
+    var at = toScreen(onEdge.ll.lat, onEdge.ll.lng), g = alignGuides(at, corners);
+    if (!g || !edge) return null;
+    var A = toXY(edge.a.lat, edge.a.lng), B = toXY(edge.b.lat, edge.b.lng), dx = B.x - A.x, dy = B.y - A.y, L = Math.hypot(dx, dy);
+    var best = null;
+    [['u', dx * g.ux + dy * g.uy, A.x * g.ux + A.y * g.uy], ['v', dy * g.ux - dx * g.uy, A.y * g.ux - A.x * g.uy]].forEach(function (c) {
+      var fix = g[c[0]];
+      if (!fix || Math.abs(c[1]) < 0.2 * L) return;  // this edge runs along that guide: it can't line up by sliding
+      var t = (fix.at - c[2]) / c[1];
+      if (t < 0 || t > 1) return;
+      var ll = fromXY(A.x + dx * t, A.y + dy * t), q = toScreen(ll.lat, ll.lng), d = Math.hypot(q.x - pos.x, q.y - pos.y);
+      if (d <= SNAP_PX + GUIDE_PX && (!best || d < best.d)) best = { d: d, ll: ll, onEdge: true, guides: [{ a: { lat: fix.from.lat, lng: fix.from.lng }, b: ll }] };
+    });
+    return best;
   }
   // Smart guides, as in Google Slides: along each of the building's two wall directions, the point
   // moves onto the line through the nearest corner within GUIDE_PX (each direction on its own), and a
@@ -3512,7 +3533,7 @@
     });
     if (!bu && !bv) return null;
     var u = bu ? bu.at : pu, v = bv ? bv.at : pv, ll = fromXY(u * ux - v * uy, u * uy + v * ux);
-    return { d: Math.min(bu ? bu.d : Infinity, bv ? bv.d : Infinity), ll: ll,
+    return { d: Math.min(bu ? bu.d : Infinity, bv ? bv.d : Infinity), ll: ll, u: bu, v: bv, ux: ux, uy: uy,
       guides: [bu, bv].filter(Boolean).map(function (b) { return { a: { lat: b.from.lat, lng: b.from.lng }, b: ll }; }) };
   }
   // A box from corner a to the opposite corner b, square to the diagram (or the building's walls); null if too thin.
@@ -3838,7 +3859,7 @@
     if (!state.roomStart) {
       // A click that snaps onto a corner or a wall starts a box; one inside a room selects it (a
       // smart guide alone does not count).
-      var s = roomSnap(pos), hit = s && !s.guides ? null : roomAt(pos);
+      var s = roomSnap(pos), hit = s && (!s.guides || s.onEdge) ? null : roomAt(pos);
       if (!state.roomOwner && (hit || state.selection)) { state.selection = hit; renderPanels(); return scheduleRender(); }
       state.roomStart = s ? s.ll : fromScreen(pos.x, pos.y);
       renderPanels(); return scheduleRender();
@@ -4349,7 +4370,7 @@
     var h = snapFor(pos, exclude);
     if (h && h.keep) return h;
     var r = roomSnap(pos, null, exclude);
-    if (r && !r.guides) return h && h.d < r.d ? h : r;
+    if (r && (!r.guides || r.onEdge)) return h && h.d < r.d ? h : r;
     return h || r;
   }
   function hallwayPoint(pos) {
