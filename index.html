@@ -1343,7 +1343,7 @@
     return best;
   }
   // Wall directions, in degrees from the reference angle; a line repeats every 180, so these cover all of 360.
-  var ANGLE_SET = [0, 30, 45, 60, 90, 120, 135, 150], MAX_SQUARE_DEG = 8;
+  var ANGLE_SET = [0, 30, 45, 60, 90, 120, 135, 150];
   // The angle walls square to at a point on a floor: Level to a wall when it is set, else the top edge of the
   // diagram placed under the point, else the building's longest wall.
   function refAngle(at, floor) {
@@ -1365,13 +1365,14 @@
     return theta + (best.a - d) * Math.PI / 180;
   }
   // Line a-b's direction from the diagram, in degrees (0-180), with the nearest allowed one and how far off it is.
-  var ON_ANGLE_DEG = 0.05;
+  // On an angle: within 0.05 degrees, or its far end within the ~1 cm a saved point is rounded to (7 decimals).
+  var ON_ANGLE_DEG = 0.05, SAVED_METERS = 0.015;
   function edgeAngle(a, b) {
     var A = toXY(a.lat, a.lng), B = toXY(b.lat, b.lng);
     if (Math.hypot(B.x - A.x, B.y - A.y) < 0.2) return null;
     var d = ((Math.atan2(B.y - A.y, B.x - A.x) - refAngle(a, state.floor)) * 180 / Math.PI) % 180, best = null;
     if (d < 0) d += 180;
-    ANGLE_SET.concat([180]).forEach(function (t) { var e = Math.abs(d - t); if (!best || e < best.off) best = { deg: d, to: t % 180, off: e }; });
+    ANGLE_SET.concat([180]).forEach(function (t) { var e = Math.abs(d - t); if (!best || e < best.off) best = { deg: d, to: t % 180, off: e, len: Math.hypot(B.x - A.x, B.y - A.y) }; });
     return best;
   }
   // The angle readout: each edge being drawn or dragged (else the selected room's or hallway's edges) labeled with
@@ -1392,7 +1393,7 @@
     edges.forEach(function (e) {
       var r = edgeAngle(e[0], e[1]);
       if (!r || r.off > 10) return;
-      var a = toScreen(e[0].lat, e[0].lng), b = toScreen(e[1].lat, e[1].lng), on = r.off < ON_ANGLE_DEG;
+      var a = toScreen(e[0].lat, e[0].lng), b = toScreen(e[1].lat, e[1].lng), on = r.off < ON_ANGLE_DEG || r.len * Math.sin(r.off * Math.PI / 180) < SAVED_METERS;
       if (Math.hypot(b.x - a.x, b.y - a.y) < 24) return;
       var color = on ? C.ok : C.warn, text = on ? r.to + '° ✓' : r.off.toFixed(1) + '° off ' + r.to + '°';
       ctx.strokeStyle = color; ctx.lineWidth = on ? 3 : 2; ctx.globalAlpha = 0.7;
@@ -1410,15 +1411,16 @@
     var dir = snapDirection(Math.atan2(p.y - a.y, p.x - a.x), refAngle(anchor, state.floor));
     return { a: a, u: { x: Math.cos(dir), y: Math.sin(dir) }, p: p };
   }
-  // Squares a ring (closed) or a hallway line in local meters. Each edge of 0.3 m or more within MAX_SQUARE_DEG of
-  // an allowed direction turns to it; runs of edges on one direction become one line; each corner moves to where
-  // its two lines meet (kept where they barely meet or the corner would move over 1 m). Every vertex keeps its
+  // Squares a ring (closed) or a hallway line in local meters. Every edge of 5 cm or more turns to its nearest
+  // allowed direction, however far off; runs of edges on one direction become one line; each corner moves to where
+  // its two lines meet (kept only where they barely meet or the corner would fly over 3 m: a broken shape). Every vertex keeps its
   // index: `drop` marks the ones inside a straight run, which a ring may drop. null when nothing turned.
-  function squareXY(xy, closed, ref) {
+  // `skip`: edges (by index) left at their angle, a room's curved ones.
+  function squareXY(xy, closed, ref, skip) {
     var n = xy.length, m = closed ? n : n - 1, edges = [];
     for (var i = 0; i < m; i++) {
       var a = xy[i], b = xy[(i + 1) % n], len = Math.hypot(b.x - a.x, b.y - a.y), th = Math.atan2(b.y - a.y, b.x - a.x);
-      var dir = len >= 0.3 ? snapDirection(th, ref, MAX_SQUARE_DEG) : null;
+      var dir = len >= 0.05 && !(skip && skip[i]) ? snapDirection(th, ref) : null;
       edges.push({ dir: dir == null ? th : dir, snapped: dir != null, len: len, mid: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 } });
     }
     if (!edges.some(function (e) { return e.snapped; })) return null;
@@ -1438,7 +1440,7 @@
       var cross = g1.d.x * g2.d.y - g1.d.y * g2.d.x;
       if (Math.abs(cross) < Math.sin(Math.PI / 180)) return orig;
       var t = ((g2.p.x - g1.p.x) * g2.d.y - (g2.p.y - g1.p.y) * g2.d.x) / cross, q = { x: g1.p.x + g1.d.x * t, y: g1.p.y + g1.d.y * t };
-      return Math.hypot(q.x - orig.x, q.y - orig.y) > 1 ? orig : q;
+      return Math.hypot(q.x - orig.x, q.y - orig.y) > 3 ? orig : q;
     };
     var out = xy.slice(), drop = xy.map(function () { return false; });
     groups.forEach(function (gr, k) {
@@ -1464,11 +1466,13 @@
   // A room wall or floor outline squared: simplified first (pixel noise would square into a staircase), then
   // squared, then checked. Returns the new points or null (unchanged, or the result would cross itself, lose
   // corners or change area by over 10%).
-  function squareRing(ring, floor) {
-    var simple = simplifyRing(ring), xy = simple.map(function (p) { return toXY(p.lat, p.lng); });
-    var sq = squareXY(xy, true, refAngle(simple[0], floor));
+  // `curves` (a room's, keyed by edge): those edges keep their angle, and no point is simplified or dropped, so the
+  // keys still match.
+  function squareRing(ring, floor, curves) {
+    var simple = curves ? ring : simplifyRing(ring), xy = simple.map(function (p) { return toXY(p.lat, p.lng); });
+    var sq = squareXY(xy, true, refAngle(simple[0], floor), curves);
     if (!sq) return null;
-    var keep = sq.xy.filter(function (p, i) { return !sq.drop[i]; });
+    var keep = curves ? sq.xy : sq.xy.filter(function (p, i) { return !sq.drop[i]; });
     var area = ringAreaXY(xy);
     if (keep.length < 3 || ringCrossesItself(keep) || Math.abs(ringAreaXY(keep) - area) > 0.1 * area) return null;
     return keep.map(function (p) { return pointOn(fromXY(p.x, p.y), floor); });
@@ -5091,12 +5095,12 @@
     if (!abbr) return;
     var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
     var rooms = box('sq-rooms', 'Rooms (with restrooms, stairwells, elevators and solid blocks)', true);
-    var outlines = box('sq-outlines', 'Floor outlines', false);
+    var outlines = box('sq-outlines', 'Floor outlines', true);
     var halls = box('sq-halls', 'Hallways (they carry the routes: check the junction rings after)', false);
     var every = box('sq-every', 'Every floor, not just floor ' + state.floor, !state.floor || state.floor === SHAPE);
     slot.innerHTML = '';
     slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
-      el('span', { text: 'Square' + nameOf(abbr) + '’s walls to 0, 30, 45, 60 and 90° from each floor’s diagram (or the leveled wall). Walls more than ' + MAX_SQUARE_DEG + '° off every angle stay as they are.' }),
+      el('span', { text: 'Square' + nameOf(abbr) + '’s walls to 0, 30, 45, 60 and 90° from each floor’s diagram (or the leveled wall): every straight wall turns to its nearest angle, however far off. Curves stay as they are.' }),
       rooms.row, outlines.row, halls.row, every.row,
       el('div', { class: 'actions' }, [
         button('Square', function () { slot.innerHTML = ''; squareBuilding(abbr, rooms.input.checked, outlines.input.checked, halls.input.checked, every.input.checked); }, 'primary'),
@@ -5107,8 +5111,8 @@
   function squareBuilding(abbr, doRooms, doOutlines, doHalls, everyFloor) {
     var onFl = function (f) { return everyFloor || f === state.floor; }, nRooms = 0, alone = 0, nOut = 0, nHalls = 0;
     if (doRooms) docsIn('features', abbr).forEach(function (x) {
-      if (x.d.kind !== 'room' || x.d.curves || !onFl(x.d.floor)) return;
-      var pts = squareRing(x.d.points, x.d.floor);
+      if (x.d.kind !== 'room' || !onFl(x.d.floor)) return;
+      var pts = squareRing(x.d.points, x.d.floor, x.d.curves);
       if (pts) { setDoc(x.path, Object.assign({}, x.d, { points: pts })); nRooms++; } else alone++;
     });
     if (doOutlines) docsIn('outlines', abbr).forEach(function (x) {
