@@ -394,15 +394,16 @@
   var EXIT_RULES = [['anyone', 'Anyone'], ['none', 'No one']];
   var DOOR_TYPES = [['hallway', 'Door to a room'], ['between', 'Between two rooms']]; // gates: the Gate button (doorType 'gate')
   // What the Room tool draws. A typed room (restroom, stairwell, elevator) has no number: the app draws its letter.
-  var ROOM_TYPES = [['room', 'Room (has a number)'], ['restroom-men', 'Men\u2019s restroom'], ['restroom-women', 'Women\u2019s restroom'],
+  var ROOM_TYPES = [['room', 'Room (has a number)'], ['plain', 'Room with no number (drawn only)'], ['restroom-men', 'Men\u2019s restroom'], ['restroom-women', 'Women\u2019s restroom'],
     ['restroom-all', 'All-gender restroom'], ['stairs', 'Stairwell'], ['elevator', 'Elevator'], ['solid', 'Solid block (pillar, filled-in wall)']];
   // A restroom, stairwell or elevator: an owner feature with its entrances, and its walls as room outlines with `use` and `owner`.
-  function isTyped(type) { return type !== 'room' && type !== 'solid'; }
+  function isTyped(type) { return type !== 'room' && type !== 'solid' && type !== 'plain'; }
   function typeColor(type) { return /^restroom-/.test(type) ? C.restroom : type === 'stairs' ? C.stairs : type === 'elevator' ? C.elevator : type === 'solid' ? C.text : C.room; }
   var ROOM_GLYPHS = { 'restroom-men': 'M', 'restroom-women': 'W', 'restroom-all': 'WC', stairs: 'S', elevator: 'E' };
   var ROOM_TYPE_LABEL = {};
   ROOM_TYPES.forEach(function (t) { ROOM_TYPE_LABEL[t[0]] = t[1]; });
-  function roomType(f) { return f.solid ? 'solid' : f.use || 'room'; }
+  // `plain`: a room the diagram leaves unnumbered, drawn in the app with no number, no door and no route.
+  function roomType(f) { return f.solid ? 'solid' : f.plain ? 'plain' : f.use || 'room'; }
   // Older drafts may hold a room area; new ones are drawn as rooms with People may walk through.
   var AREA_TYPES = [['open', 'Open area (commons, lobby, atrium)'], ['room', 'Inside a room (lecture hall, library)']];
   var AREA_EDGE_METERS = 2; // tools/indoor/indoor.ts: a door, stair, entrance or hallway end this close to an open area joins it
@@ -1974,7 +1975,7 @@
       if (f.solid) return;
       var c = centerOf(ring.map(function (q) { return toScreen(q.lat, q.lng); }));
       ctx.font = '600 11px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.fillStyle = color;
-      ctx.fillText(f.use ? ROOM_GLYPHS[f.use] : f.room || '?', c.x, c.y + 4);
+      ctx.fillText(f.use ? ROOM_GLYPHS[f.use] : f.plain ? '' : f.room || '?', c.x, c.y + 4);
     });
     // Walkable areas under everything: an open area tinted, a room you can cross tinted, dashed and labeled.
     list.forEach(function (x) {
@@ -2579,6 +2580,7 @@
       }
       if (owner) body.appendChild(el('p', { class: 'meta', text: 'Click one corner, then the opposite corner.' }));
       else if (state.roomKind === 'solid') body.appendChild(el('p', { class: 'meta', text: 'A solid block is somewhere nobody goes and nothing is named: a pillar, a filled-in wall, a duct. The app fills it in.' }));
+      else if (state.roomKind === 'plain') body.appendChild(el('p', { class: 'meta', text: 'A room the diagram leaves unnumbered (a closet, a storage space): the app draws it like a room, with no number, and never routes to it. Click one corner, then the opposite corner.' }));
       else if (isTyped(state.roomKind)) {
         if (state.roomKind === 'stairs' || state.roomKind === 'elevator') {
           var cname = el('input', { type: 'text', id: 'connector-name', value: state.connectorName, placeholder: nextConnectorName(state.roomKind), autocomplete: 'off' });
@@ -2688,6 +2690,8 @@
       body.appendChild(roomTypePicker(path, f));
       if (f.solid) {
         body.appendChild(el('p', { class: 'meta', text: 'Solid block on floor ' + f.floor + ': drawn filled in, no number.' }));
+      } else if (f.plain) {
+        body.appendChild(el('p', { class: 'meta', text: 'Room with no number on floor ' + f.floor + ': drawn like a room in the app, with no number and no route to it.' }));
       } else if (f.use) {
         body.appendChild(el('p', { class: 'meta', text: ROOM_TYPE_LABEL[f.use] + ' on floor ' + f.floor + ': no number; the app draws ' + ROOM_GLYPHS[f.use] + ' in the middle.' }));
       } else {
@@ -3020,8 +3024,9 @@
     var mid = f.points.reduce(function (m, q) { return { lat: m.lat + q.lat / f.points.length, lng: m.lng + q.lng / f.points.length }; }, { lat: 0, lng: 0 });
     var spot = owner ? (owner.d.kind === 'restroom' ? owner.d.points[0] : connectorSpot(owner.d, floor)) : door ? door.d.points[0] : pointAt(mid);
     var next = Object.assign({}, f);
-    delete next.solid; delete next.use; delete next.owner; delete next.room; delete next.walkThrough;
+    delete next.solid; delete next.plain; delete next.use; delete next.owner; delete next.room; delete next.walkThrough;
     if (type === 'solid') next.solid = true;
+    else if (type === 'plain') next.plain = true;
     else if (type === 'room') next.room = number || '';
     else {
       var key, body;
@@ -3232,7 +3237,7 @@
   }
 
   // A door or room outline with no number yet (copied from another floor): not saved.
-  function unnumbered(f) { return f.kind === 'door' ? !f.room : f.kind === 'cdoor' ? !f.rooms[0] || !f.rooms[1] : f.kind === 'room' && !f.solid && !f.use && !f.room; }
+  function unnumbered(f) { return f.kind === 'door' ? !f.room : f.kind === 'cdoor' ? !f.rooms[0] || !f.rooms[1] : f.kind === 'room' && !f.solid && !f.plain && !f.use && !f.room; }
   function hasHallways(floor) { return hallwayLines(floor).length > 0; }
   function wallDistance(f) { var keep = state.floor; state.floor = f.floor; var w = nearestWall(f.points[0]); state.floor = keep; return w ? w.meters : 0; }
   // Rooms on a floor someone can walk into: those with a hallway door, then any room a door
@@ -3675,7 +3680,7 @@
       if (f.owner) body.owner = keys[f.owner];
       if (f.kind === 'cdoor') body.rooms = (f.rooms || ['', '']).map(rename);
       else if (f.kind === 'restroom') { if (f.room && rename(f.room)) body.room = rename(f.room); else delete body.room; }
-      else if (f.kind === 'door' || (f.kind === 'room' && !f.solid && !f.use) || (f.kind === 'area' && f.akind === 'room')) body.room = rename(f.room);
+      else if (f.kind === 'door' || (f.kind === 'room' && !f.solid && !f.plain && !f.use) || (f.kind === 'area' && f.akind === 'room')) body.room = rename(f.room);
       setDoc(featurePath(f.abbr, k), body);
       return featurePath(f.abbr, k);
     });
@@ -3949,10 +3954,11 @@
       flash('Walls of ' + ownerName(owner.d) + '.', false);
       return addWalls(owner.d, corners);
     }
-    if (kind === 'solid') {
-      var sk = newKey('s');
+    if (kind === 'solid' || kind === 'plain') {
+      var sk = newKey(kind === 'solid' ? 's' : 'r'), made = { abbr: state.abbr, kind: 'room', key: sk, floor: state.floor, points: corners.map(pointAt) };
+      made[kind] = true;
       state.roomStart = null;
-      return setDoc(featurePath(state.abbr, sk), { abbr: state.abbr, kind: 'room', key: sk, floor: state.floor, solid: true, points: corners.map(pointAt) });
+      return setDoc(featurePath(state.abbr, sk), made);
     }
     if (isTyped(kind)) {
       state.roomStart = null;
@@ -4945,9 +4951,9 @@
           if (f.akind === 'room') a.room = f.room;
           return a;
         }),
-        rooms: fs.filter(function (f) { return f.kind === 'room' && !f.solid && !f.use && f.room; }).sort(byKey).map(function (f) {
-          var r = withCurvesOut(f, { key: f.key, floor: f.floor, room: f.room, corners: f.points.map(exportPoint) });
-          if (f.walkThrough) r.walkThrough = true;
+        rooms: fs.filter(function (f) { return f.kind === 'room' && !f.solid && !f.use && (f.room || f.plain); }).sort(byKey).map(function (f) {
+          var r = withCurvesOut(f, f.plain ? { key: f.key, floor: f.floor, corners: f.points.map(exportPoint) } : { key: f.key, floor: f.floor, room: f.room, corners: f.points.map(exportPoint) });
+          if (f.walkThrough && !f.plain) r.walkThrough = true;
           return r;
         }),
         solids: fs.filter(function (f) { return f.kind === 'room' && f.solid; }).sort(byKey).map(function (f) {
@@ -5294,12 +5300,13 @@
       });
       (b.objects || []).forEach(function (o) { var body = { kind: 'object', floor: o.floor, okind: o.kind, points: [inPoint(o.at)] }; if (o.name) body.name = o.name; put(o.key, body); });
       (b.areas || []).forEach(function (a) { var body = { kind: 'area', floor: a.floor, akind: a.kind, points: a.points.map(inPoint) }; if (a.room) body.room = a.room; put(a.key, body); });
-      (b.rooms || []).concat(b.solids || []).forEach(function (r) {
-        var body = { kind: 'room', floor: r.floor, points: r.corners.map(inPoint) };
+      // A room with no number is drawn only (plain); everything in solids is a solid block.
+      (b.rooms || []).map(function (r) { return [r, 'plain']; }).concat((b.solids || []).map(function (r) { return [r, 'solid']; })).forEach(function (e) {
+        var r = e[0], body = { kind: 'room', floor: r.floor, points: r.corners.map(inPoint) };
         if (r.room) body.room = r.room;
         if (r.use) body.use = r.use;
         if (r.walkThrough) body.walkThrough = true;
-        if (!r.room && !r.use) body.solid = true;
+        if (!r.room && !r.use) body[e[1]] = true;
         if (r.curves) body.curves = Object.keys(r.curves).reduce(function (out, k) { out[k] = inPoint(r.curves[k]); return out; }, {});
         put(r.key, body);
       });
