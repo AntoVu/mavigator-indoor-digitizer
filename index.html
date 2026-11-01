@@ -2480,7 +2480,8 @@
       if (ownNow.length > 1) {
         var picked = state.outlinePiece !== null && ownNow[state.outlinePiece];
         body.appendChild(el('p', { class: 'meta', text: ownNow.length + ' pieces. ' + (picked ? 'Piece ' + (state.outlinePiece + 1) + ' selected.' : 'Click inside one to select it.') }));
-        if (picked) body.appendChild(el('div', { class: 'actions' }, [button('Delete this piece', function () { deletePiece(state.outlinePiece); }, 'danger')]));
+        body.appendChild(el('div', { class: 'actions' }, [button('Join pieces', joinPieces)].concat(picked ? [button('Delete this piece', function () { deletePiece(state.outlinePiece); }, 'danger')] : [])));
+        body.appendChild(el('p', { class: 'meta', text: 'Join pieces: pieces that overlap become one outline (a wing traced on its own diagram, once placed). Pieces apart stay apart: drag a corner across to make them overlap first.' }));
       }
       var others = [SHAPE].concat(floorsOf(state.abbr)).filter(function (fl) { return fl !== state.floor && floorOutlineOf(state.abbr, fl); });
       if (others.length) {
@@ -3369,6 +3370,18 @@
       if (pointInPoly(pos.x, pos.y, ring.map(function (q) { return toScreen(q.lat, q.lng); }))) hit = p;
     });
     return hit;
+  }
+  // This floor's overlapping pieces as one outline (two wings traced on two diagrams); pieces apart stay apart.
+  function joinPieces() {
+    var own = floorOutlineOf(state.abbr, state.floor);
+    if (!own || own.length < 2) return;
+    if (!window.polygonClipping) return flash('The geometry library did not load. Check the connection and reload.', true);
+    var out = window.polygonClipping.union.apply(null, own.map(clipPolygon));
+    var pieces = out.map(function (poly) { return clipOpen(poly[0]); }).filter(function (ring) { return ring.length >= 3 && clipArea(ring) >= 1; })
+      .map(function (ring) { return ring.map(function (q) { return pointAt(fromXY(q[0], q[1])); }); });
+    state.outlinePiece = null;
+    setFloorOutline(pieces);
+    flash(own.length + ' pieces joined into ' + pieces.length + (pieces.length === own.length ? ': none of them overlap. Drag a corner of one across the other, then join again.' : '. Undo puts them back.'), pieces.length === own.length);
   }
   function deletePiece(p) {
     var own = floorOutlineOf(state.abbr, state.floor);
