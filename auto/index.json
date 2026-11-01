@@ -8,17 +8,17 @@
   "residence-arlington-hall": {
    "name": "Arlington Hall",
    "folder": "ArlingtonHall",
-   "layouts": 3
+   "layouts": 7
   },
   "residence-west-hall": {
    "name": "West Hall",
    "folder": "WCRH",
-   "layouts": 4
+   "layouts": 20
   },
   "residence-vandergriff-hall": {
    "name": "Vandergriff Hall",
    "folder": "Vandergriff",
-   "layouts": 4
+   "layouts": 10
   },
   "apartment-the-heights-on-pecan": {
    "name": "The Heights on Pecan",
@@ -28,7 +28,7 @@
   "KC": {
    "name": "Kalpana Chawla Hall",
    "folder": "KC",
-   "layouts": 3
+   "layouts": 7
   },
   "LIBR": {
    "name": "Central Library",
@@ -38,7 +38,7 @@
   "COBA": {
    "name": "Business Building",
    "folder": "COBA",
-   "layouts": 6
+   "layouts": 9
   },
   "PKH": {
    "name": "Pickard Hall",
@@ -53,22 +53,22 @@
   "SH": {
    "name": "Science Hall",
    "folder": "SH",
-   "layouts": 5
+   "layouts": 6
   },
   "SWSH": {
    "name": "SWSH - UTA School of Social Work & CONHI Smart Hospital",
    "folder": "SWSH",
-   "layouts": 5
+   "layouts": 6
   },
   "FA": {
    "name": "Fine Arts Building",
    "folder": "FA",
-   "layouts": 6
+   "layouts": 7
   },
   "UC": {
    "name": "University Center",
    "folder": "UC",
-   "layouts": 3
+   "layouts": 6
   },
   "UAB": {
    "name": "University Administration Building",
@@ -78,12 +78,12 @@
   "SEIR": {
    "name": "SEIR Building",
    "folder": "SEIR",
-   "layouts": 4
+   "layouts": 5
   },
   "CAPPA": {
    "name": "CAPPA Building",
    "folder": "CAPPA",
-   "layouts": 4
+   "layouts": 5
   },
   "misc-college-park-center": {
    "name": "College Park Center",
@@ -103,7 +103,7 @@
   "TH": {
    "name": "Trimble Hall",
    "folder": "TH",
-   "layouts": 4
+   "layouts": 5
   },
   "ELB": {
    "name": "Engineering Lab Building",
