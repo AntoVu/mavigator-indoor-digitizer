@@ -2035,7 +2035,7 @@
         ctx.beginPath(); ctx.moveTo(s.x, s.y - 8); ctx.lineTo(s.x + 7, s.y + 5); ctx.lineTo(s.x - 7, s.y + 5); ctx.closePath();
         if (f.exitOnly) ctx.stroke(); else ctx.fill();
         ctx.font = '600 10px ui-monospace, monospace'; ctx.textAlign = 'left'; ctx.fillStyle = C.text;
-        ctx.fillText((f.emergency ? '!' : '') + (f.enter === 'staff' ? 'staff' : '') + (f.exit === 'none' ? ' in only' : '') + (f.accessible ? '♿' : ''), s.x + 8, s.y - 4);
+        ctx.fillText((f.into ? '→' + (labelOf(f.into.building) || nameOf(f.into.building)) + ' ' + f.into.floor + ' ' : '') + (f.emergency ? '!' : '') + (f.enter === 'staff' ? 'staff' : '') + (f.exit === 'none' ? ' in only' : '') + (f.accessible ? '♿' : ''), s.x + 8, s.y - 4);
       }
     });
     // A door between two rooms with its first side placed.
@@ -2713,7 +2713,22 @@
       em.addEventListener('change', function () { setDoc(path, withEntranceRules(f, rules.enter, rules.exit, em.checked)); });
       body.appendChild(el('label', { class: 'check', for: 'sel-emergency' }, [em, 'Emergency exit (alarmed): routes never use it']));
       body.appendChild(el('div', { class: 'actions' }, [flag('sel-accessible', 'Accessible', 'accessible')]));
-      body.appendChild(el('p', { class: 'meta', text: 'Entrance on floor ' + f.floor + '. ' + (nearestWalkway(f.points[0]) <= reachMeters() ? 'A walkway is in reach.' : 'No walkway within ' + reachMeters() + ' m: the import cannot join it.') }));
+      // A door straight into another building (a link or bridge), on any floor of either.
+      var others = {};
+      (BASE ? BASE.buildings : []).forEach(function (b) { var k = keyOf(b); if (k && k !== state.abbr) others[k] = nameOf(k) + (labelOf(k) ? ' (' + labelOf(k) + ')' : ''); });
+      var otherList = Object.keys(others).sort(function (a, b) { return others[a] < others[b] ? -1 : 1; }).map(function (k) { return [k, others[k]]; });
+      var into = f.into || null;
+      var setInto = function (v) { var next = Object.assign({}, f); if (v) next.into = v; else delete next.into; setDoc(path, next); };
+      body.appendChild(el('label', { class: 'field', for: 'sel-into' }, ['Leads to',
+        pickList('sel-into', [['', 'Outside']].concat(otherList), into ? into.building : '', function (v) { setInto(v ? { building: v, floor: into ? into.floor : f.floor } : null); })]));
+      if (into) {
+        var intoFloor = el('input', { type: 'text', id: 'sel-into-floor', value: into.floor, autocomplete: 'off' });
+        intoFloor.addEventListener('change', function () { if (intoFloor.value.trim()) setInto({ building: into.building, floor: intoFloor.value.trim().toUpperCase() }); });
+        body.appendChild(el('label', { class: 'field', for: 'sel-into-floor' }, ['Onto its floor (as that building numbers it)', intoFloor]));
+      }
+      body.appendChild(el('p', { class: 'meta', text: 'Entrance on floor ' + f.floor + '. ' + (into
+        ? 'It joins this floor’s hallways to ' + nameOf(into.building) + ' floor ' + into.floor + '’s, never to a walkway. Trace that building’s hallway up to this spot.'
+        : nearestWalkway(f.points[0]) <= reachMeters() ? 'A walkway is in reach.' : 'No walkway within ' + reachMeters() + ' m: the import cannot join it.') }));
     }
     body.appendChild(el('div', { class: 'actions' }, [button('Delete', remove, 'danger'), button('Done', close)]));
   }
@@ -3218,7 +3233,7 @@
         items.push({ text: 'Door ' + f.rooms.join('|') + ' (floor ' + f.floor + '): no hallway door leads to either room', path: x.path, floor: f.floor });
       }
       if (f.kind === 'door' && nearestHallway(f.points[0], f.floor) > DOOR_HALLWAY_METERS && !areaJoin(f.points[0], f.floor, true)) items.push({ text: 'Door ' + f.room + ' (floor ' + f.floor + ') is not on a hallway', path: x.path, floor: f.floor });
-      if (f.kind === 'entrance' && nearestWalkway(f.points[0]) > reachMeters()) items.push({ text: 'Entrance (floor ' + f.floor + ') has no walkway within ' + reachMeters() + ' m', path: x.path, floor: f.floor });
+      if (f.kind === 'entrance' && !f.into && nearestWalkway(f.points[0]) > reachMeters()) items.push({ text: 'Entrance (floor ' + f.floor + ') has no walkway within ' + reachMeters() + ' m', path: x.path, floor: f.floor });
       // Only buildings traced inside need their entrances on a hallway.
       if (f.kind === 'entrance' && hasHallways(f.floor) && nearestHallway(f.points[0], f.floor) > 10 && !areaJoin(f.points[0], f.floor, false)) items.push({ text: 'Entrance (floor ' + f.floor + ') is not near a hallway', path: x.path, floor: f.floor });
       if (f.kind === 'entrance' && wallDistance(f) > 3) items.push({ text: 'Entrance (floor ' + f.floor + ') is not on the wall', path: x.path, floor: f.floor });
@@ -4858,6 +4873,7 @@
           if (f.emergency) e.emergency = true;
           if (f.enter) e.enter = f.enter;
           if (f.exit) e.exit = f.exit;
+          if (f.into) e.into = { building: f.into.building, floor: f.into.floor };
           return e;
         }),
         objects: fs.filter(function (f) { return f.kind === 'object'; }).sort(byKey).map(function (f) {
@@ -5215,6 +5231,7 @@
         if (en.emergency) e.emergency = true;
         if (en.enter) e.enter = en.enter;
         if (en.exit) e.exit = en.exit;
+        if (en.into) e.into = { building: en.into.building, floor: en.into.floor };
         put(en.key, e);
       });
       (b.objects || []).forEach(function (o) { var body = { kind: 'object', floor: o.floor, okind: o.kind, points: [inPoint(o.at)] }; if (o.name) body.name = o.name; put(o.key, body); });

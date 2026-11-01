@@ -32,6 +32,10 @@ a person has to check it against the diagrams and fix the rest. That review is t
    middle and rooms reach the floor outline. It never crosses a hallway or a gap wider than its limit (0.6 m between
    rooms, 0.8 m to the outline). Best order: place the diagram, then Simplify, Square to angles, Close wall gaps, and
    fix the details last.
+   Some buildings join others inside (Science Hall into the Chemistry & Physics Building on floor 3, Trimble and
+   Hammond, Preston, Carlisle and Ransom). Place an **Entrance** at that doorway and set **Leads to** the other
+   building and the floor it opens onto there, which can be any floor. It only has to be in one of the two
+   buildings, and the other building needs a hallway reaching that spot.
 5. Press **Save this building**. It downloads `<building>.json` (for example `SH.json`).
 6. In the Mavigator repo, all your buildings go on one branch of your own, one commit per building named after it.
    The first time:
