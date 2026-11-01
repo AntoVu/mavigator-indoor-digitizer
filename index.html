@@ -469,7 +469,7 @@
     opacity: 0.6,         // a diagram's opacity until its own slider is moved
     layoutOpacity: {},    // layout path -> its opacity (this browser)
     underFloor: {}, underOpacity: 0.35, // building -> another floor whose diagrams are drawn under this one's (this session)
-    floorCopyFrom: null, confirmFloorCopy: null,
+    floorCopy: null,      // Copy from another floor: { to, from, kinds, numbers: 'bump' | 'keep' | 'blank', replace }
     showNext: {},         // checklist item text -> which of its items Show picks next
     pool: {},             // abbr -> [{ name, floor, file, thumb }] (this session only)
     images: {},           // layout path -> HTMLImageElement
@@ -2197,6 +2197,7 @@
       var um = el('input', { type: 'checkbox', id: 'floor-unmapped', checked: unmappedOf(abbr).indexOf(state.floor) >= 0 || null });
       um.addEventListener('change', function () { setUnmapped(abbr, state.floor, um.checked); });
       flags.appendChild(el('label', { class: 'check', for: 'floor-unmapped' }, [um, 'Floor ' + state.floor + ' can\u2019t be mapped (say, its diagram is out of date): the app tells people it isn\u2019t mapped yet']));
+      renderFloorCopy(flags);
     }
 
     renderNote();
@@ -2458,7 +2459,7 @@
       var clip = state.clipboard;
       if (clip && clip.abbr === state.abbr && clip.floor !== state.floor) body.appendChild(el('div', { class: 'actions' }, [
         button('Paste ' + clip.docs.length + ' item(s) from floor ' + clip.floor + ' (Ctrl+V)', pasteClipboard, 'primary')]));
-      body.appendChild(el('p', { class: 'meta', text: 'Copy to another floor: box whole items, Ctrl+C, open the other floor, Ctrl+V. They land in the same place with room numbers blank. Stairs and elevators use Goes to floors instead.' }));
+      body.appendChild(el('p', { class: 'meta', text: 'Copy to another floor: box whole items, Ctrl+C, open the other floor, Ctrl+V. They land in the same place with room numbers blank. For a whole floor, use Copy from another floor… under the floor buttons (pick what to copy, renumber 212 to 312, replace what is there). Stairs and elevators use Goes to floors instead.' }));
     } else if (state.mode === 'outline') {
       var onShape = state.floor === SHAPE;
       body.appendChild(el('p', { class: 'meta', text: (onShape
@@ -2550,7 +2551,6 @@
       var all = Object.keys(named), left = all.filter(function (r) { return !done[r]; }).sort();
       body.appendChild(el('p', { class: 'meta', text: 'Floor ' + state.floor + ': ' + (all.length - left.length) + ' of ' + all.length + ' rooms outlined' +
         (left.length ? '. Not yet: ' + left.slice(0, 60).join(' ') + (left.length > 60 ? ' \u2026' : '') : '.') }));
-      renderFloorCopy(body);
     } else if (state.mode === 'place') {
       var pl = placingDoc();
       if (!pl) body.appendChild(el('p', { class: 'meta', text: 'Press Place by hand on a layout in Diagrams.' }));
@@ -3567,31 +3567,21 @@
   // ---- copying a floor ------------------------------------------------------------------------------
   // Key prefixes of what can be copied to another floor. Stairs and elevators span floors: "Goes to floors" copies them.
   var COPY_PREFIX = { room: 'r', hallway: 'h', door: 'd', cdoor: 'k', gate: 'g', restroom: 'w', entrance: 'e', object: 'o', area: 'a' };
-  // What "Copy from floor" takes: rooms, solid blocks, hallways, doors and restrooms with their walls.
-  var FLOOR_COPY = { room: 1, hallway: 1, door: 1, cdoor: 1, restroom: 1 };
-  function floorCopyable(fl) {
-    var fs = featuresOf(state.abbr).filter(function (x) { return x.d.floor === fl; }), restrooms = {};
-    fs.forEach(function (x) { if (x.d.kind === 'restroom') restrooms[x.d.key] = true; });
-    return fs.filter(function (x) { return FLOOR_COPY[x.d.kind] && (!x.d.use || restrooms[x.d.owner]); });
-  }
   // Copies of features on floor `to`: new keys, plain lat/lng (the other floor's diagram doesn't apply), room numbers
-  // blank; restroom walls go with their restroom. One undo step. Returns the new paths.
-  function addCopies(list, to) {
+  // through `rename` (blank without it); restroom walls go with their restroom. One undo step. Returns the new paths.
+  function addCopies(list, to, rename) {
+    rename = rename || function () { return ''; };
     var keys = {};
     list.forEach(function (f) { keys[f.key] = newKey(COPY_PREFIX[f.kind] || 'r'); });
     return list.filter(function (f) { return !f.owner || keys[f.owner]; }).map(function (f) {
       var k = keys[f.key], body = Object.assign({}, f, copyShape(f), { key: k, floor: to });
       if (f.owner) body.owner = keys[f.owner];
-      if (f.kind === 'cdoor') body.rooms = ['', ''];
-      else if (f.kind === 'restroom') delete body.room;
-      else if (f.kind === 'door' || (f.kind === 'room' && !f.solid && !f.use) || (f.kind === 'area' && f.akind === 'room')) body.room = '';
+      if (f.kind === 'cdoor') body.rooms = (f.rooms || ['', '']).map(rename);
+      else if (f.kind === 'restroom') { if (f.room && rename(f.room)) body.room = rename(f.room); else delete body.room; }
+      else if (f.kind === 'door' || (f.kind === 'room' && !f.solid && !f.use) || (f.kind === 'area' && f.akind === 'room')) body.room = rename(f.room);
       setDoc(featurePath(f.abbr, k), body);
       return featurePath(f.abbr, k);
     });
-  }
-  function copyFloor(from, to) {
-    var n = addCopies(floorCopyable(from).map(function (x) { return x.d; }), to).length;
-    flash('Copied ' + n + ' items from floor ' + from + '. Give the rooms and doors their numbers: unnumbered ones are not saved.', false);
   }
   // ---- copy and paste (Ctrl+C / Ctrl+V) ----------------------------------------------------------
   // What Ctrl+C takes: in Move mode every item whose points here are all boxed, else the selected item. A restroom brings its
@@ -3637,29 +3627,96 @@
     flash('Pasted ' + paths.length + ' item(s) from floor ' + c.floor + ', selected: drag to nudge them. Room numbers are blank.', false);
     renderPanels(); scheduleRender();
   }
+  // "Copy from another floor": what each feature counts as in its checklist. Restroom walls go with restrooms;
+  // stairwell and elevator walls only onto a floor their stairs reach (Goes to floors adds the stop itself).
+  var COPY_KINDS = [['rooms', 'Room outlines'], ['restrooms', 'Restrooms (with their walls)'], ['solids', 'Solid blocks'],
+    ['doors', 'Doors (and doors between rooms)'], ['gates', 'Hallway gates'], ['hallways', 'Hallways'], ['entrances', 'Entrances'],
+    ['objects', 'Objects'], ['areas', 'Walkable areas'], ['shafts', 'Stairwell and elevator walls'], ['outline', 'Floor outline']];
+  var ALL_COPY = COPY_KINDS.reduce(function (o, k) { o[k[0]] = true; return o; }, {});
+  function only(k) { var o = {}; o[k] = true; return o; }
+  function copyKind(f) {
+    if (f.kind === 'room') return f.solid ? 'solids' : !f.use ? 'rooms' : f.use === 'stairs' || f.use === 'elevator' ? 'shafts' : 'restrooms';
+    return { restroom: 'restrooms', door: 'doors', cdoor: 'doors', gate: 'gates', hallway: 'hallways', entrance: 'entrances', object: 'objects', area: 'areas' }[f.kind] || null;
+  }
+  function copyItems(fl, kinds, to) {
+    return featuresOf(state.abbr).filter(function (x) {
+      var k = copyKind(x.d), owner;
+      if (x.d.floor !== fl || !k || !kinds[k]) return false;
+      if (k !== 'shafts' || !to) return true;
+      owner = featuresOf(state.abbr).filter(function (o) { return o.d.key === x.d.owner; })[0];
+      return owner && owner.d.floors.indexOf(to) >= 0;
+    });
+  }
+  // A room number on floor `from` for floor `to`: the floor's own prefix swapped (212 -> 312, B12 -> 112); null when
+  // the number doesn't start with it.
+  function bumpRoom(n, from, to) {
+    if (!n) return n;
+    return String(n).toUpperCase().indexOf(String(from).toUpperCase()) === 0 ? to + String(n).slice(String(from).length) : null;
+  }
   function renderFloorCopy(body) {
-    var order = floorsOf(state.abbr), here = order.indexOf(state.floor);
-    var sources = order.filter(function (fl) { return fl !== state.floor && floorCopyable(fl).length; });
+    var to = state.floor, fc = state.floorCopy;
+    var sources = floorsOf(state.abbr).filter(function (fl) { return fl !== to && (copyItems(fl, ALL_COPY).length || floorOutlineOf(state.abbr, fl)); });
     if (!sources.length) return;
-    if (sources.indexOf(state.floorCopyFrom) < 0) state.floorCopyFrom = sources.filter(function (fl) { return order.indexOf(fl) < here; }).pop() || sources[0];
-    if (state.confirmFloorCopy !== state.floor) {
-      body.appendChild(el('div', { class: 'actions' }, [
-        el('label', { class: 'field', for: 'floor-copy-from' }, ['Copy rooms, hallways, doors and restrooms from',
-          pickList('floor-copy-from', sources.map(function (fl) { return [fl, 'Floor ' + fl]; }), state.floorCopyFrom, function (v) { state.floorCopyFrom = v; })]),
-        button('Copy here', function () { state.confirmFloorCopy = state.floor; renderPanels(); })
-      ]));
+    if (!fc || fc.to !== to) {
+      body.appendChild(el('div', { class: 'actions' }, [button('Copy from another floor…', function () {
+        var order = floorsOf(state.abbr), here = order.indexOf(to);
+        state.floorCopy = { to: to, from: sources.filter(function (fl) { return order.indexOf(fl) < here; }).pop() || sources[0],
+          kinds: Object.assign({}, ALL_COPY), numbers: 'bump', replace: true };
+        renderPanels();
+      })]));
       return;
     }
-    var n = { room: 0, solid: 0, hallway: 0, door: 0, restroom: 0, walls: 0 }, have = floorCopyable(state.floor).length;
-    floorCopyable(state.floorCopyFrom).forEach(function (x) { n[kindCount(x.d)]++; });
-    body.appendChild(el('div', { class: 'confirm' }, [
-      el('span', { text: 'Add ' + n.room + ' rooms, ' + n.solid + ' solid blocks, ' + n.hallway + ' hallways, ' + n.door + ' doors and ' + n.restroom + ' restrooms from floor ' + state.floorCopyFrom +
-        ' to floor ' + state.floor + ', with room numbers left blank?' + (have ? ' Floor ' + state.floor + ' already has ' + have + ' of these; the copies go on top.' : '') }),
-      el('div', { class: 'actions' }, [
-        button('Copy', function () { state.confirmFloorCopy = null; copyFloor(state.floorCopyFrom, state.floor); }, 'primary'),
-        button('Cancel', function () { state.confirmFloorCopy = null; renderPanels(); })
-      ])
+    if (sources.indexOf(fc.from) < 0) fc.from = sources[0];
+    var count = function (fl, k) { return k === 'outline' ? (floorOutlineOf(state.abbr, fl) ? 1 : 0) : copyItems(fl, only(k), fl === fc.from ? to : null).length; };
+    var box = el('div', { class: 'confirm' });
+    box.appendChild(el('label', { class: 'field', for: 'floor-copy-from' }, ['Copy onto floor ' + to + ' from',
+      pickList('floor-copy-from', sources.map(function (fl) { return [fl, 'Floor ' + fl]; }), fc.from, function (v) { fc.from = v; renderPanels(); })]));
+    COPY_KINDS.forEach(function (k) {
+      var n = count(fc.from, k[0]);
+      var cb = el('input', { type: 'checkbox', id: 'floor-copy-' + k[0], checked: (fc.kinds[k[0]] && n) || null, disabled: n ? null : true });
+      cb.addEventListener('change', function () { fc.kinds[k[0]] = cb.checked; renderPanels(); });
+      box.appendChild(el('label', { class: 'check', for: 'floor-copy-' + k[0] }, [cb, k[1] + ' (' + n + ')']));
+    });
+    box.appendChild(el('label', { class: 'field', for: 'floor-copy-numbers' }, ['Room numbers',
+      pickList('floor-copy-numbers', [['bump', 'Change to floor ' + to + ' (' + (bumpRoom(fc.from + '12', fc.from, to) || to + '12') + ' for ' + fc.from + '12)'],
+        ['keep', 'Keep them as they are'], ['blank', 'Leave them blank']], fc.numbers, function (v) { fc.numbers = v; })]));
+    var have = COPY_KINDS.reduce(function (n, k) { return n + (fc.kinds[k[0]] ? count(to, k[0]) : 0); }, 0);
+    if (have) {
+      var rb = el('input', { type: 'checkbox', id: 'floor-copy-replace', checked: fc.replace || null });
+      rb.addEventListener('change', function () { fc.replace = rb.checked; });
+      box.appendChild(el('label', { class: 'check', for: 'floor-copy-replace' }, [rb, 'Replace what floor ' + to + ' has of the checked kinds (' + have + ' items); unchecked, the copies go on top']));
+    }
+    box.appendChild(el('div', { class: 'actions' }, [
+      button('Copy', function () { state.floorCopy = null; copyFloor(fc); }, 'primary'),
+      button('Cancel', function () { state.floorCopy = null; renderPanels(); })
     ]));
+    body.appendChild(box);
+  }
+  // One undo step: setDoc groups everything done in this call.
+  function copyFloor(fc) {
+    var items = copyItems(fc.from, fc.kinds, fc.to), misses = 0, from = fc.from, to = fc.to;
+    var rename = function (n) {
+      if (fc.numbers === 'keep' || !n) return n;
+      if (fc.numbers === 'blank') return '';
+      var b = bumpRoom(n, from, to);
+      if (b === null) misses++;
+      return b === null ? '' : b;
+    };
+    if (fc.replace) {
+      copyItems(to, fc.kinds, null).forEach(function (x) { if (state.docs[x.path]) deleteFeature(x.path); });
+    }
+    var shafts = items.filter(function (x) { return copyKind(x.d) === 'shafts'; });
+    var n = addCopies(items.filter(function (x) { return copyKind(x.d) !== 'shafts'; }).map(function (x) { return x.d; }), to, rename).length;
+    shafts.forEach(function (x) {
+      if (wallsOf(state.abbr, x.d.owner, to)) return;  // that stair has its walls here already
+      var k = newKey('r');
+      setDoc(featurePath(state.abbr, k), Object.assign({}, x.d, copyShape(x.d), { key: k, floor: to }));
+      n++;
+    });
+    if (fc.kinds.outline && floorOutlineOf(state.abbr, from)) { setFloorOutline(floorOutlineOf(state.abbr, from).map(copyPoints)); n++; }
+    flash('Copied ' + n + ' items from floor ' + from + ' to floor ' + to + (fc.replace ? ', replacing what was here' : '') + '.' +
+      (misses ? ' ' + misses + ' room numbers didn’t start with ' + from + ' and were left blank: number them.' : '') + ' Undo puts it back.', !!misses);
+    renderPanels(); scheduleRender();
   }
   function copyShape(f) {
     var out = { points: copyPoints(f.points) };
