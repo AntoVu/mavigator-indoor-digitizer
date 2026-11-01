@@ -3085,7 +3085,18 @@
   // hallways share. `joins`: the import's gap rule, repeated until nothing is in reach: the single closest dead
   // end to a segment in another piece of the network, within DEAD_END_JOIN_METERS, gets a straight hallway there
   // ({ from, to } in meters, distance, path). So two facing dead ends make one join.
+  // Kept across frames until a hallway on the floor changes (docs are replaced, never edited in place): rebuilding it
+  // every frame made big auto traces (Arlington Hall) stutter on each mouse move.
+  var hallNetCache = {};
   function hallNet(floor) {
+    var docs = featuresOf(state.abbr).filter(function (x) { return x.d.kind === 'hallway' && x.d.floor === floor; }).map(function (x) { return x.d; });
+    var key = state.abbr + ':' + floor, at = ORIGIN.lat + ',' + ORIGIN.lng, c = hallNetCache[key];
+    if (c && c.at === at && c.docs.length === docs.length && c.docs.every(function (d, i) { return d === docs[i]; })) return c.net;
+    var net = buildHallNet(floor);
+    hallNetCache[key] = { docs: docs, at: at, net: net };
+    return net;
+  }
+  function buildHallNet(floor) {
     return remember('hallnet:' + state.abbr + ':' + floor, function () {
       var paths = featuresOf(state.abbr).filter(function (x) { return x.d.kind === 'hallway' && x.d.floor === floor; }).map(function (x) { return x.path; });
       var nodes = [], segs = [];
