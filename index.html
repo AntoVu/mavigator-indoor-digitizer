@@ -232,7 +232,7 @@
       <li>Run <code>npm run fetch:evac</code>. It downloads the diagrams into <code>tools/indoor/cache/evac/</code>. They are copyrighted: they stay on your computer and in this browser, and are never saved to the draft or the repo.</li>
       <li><b>Add folder</b> and pick <code>tools/indoor/cache/evac/</code> once. Every diagram is filed under its building and floor and kept in this browser, so you don't add them again next time.</li>
       <li><b>Click a building</b> on the campus map. Nedderman, ERB and Woolf are labeled, but any building opens, even just to mark its entrances.</li>
-      <li>Each floor's diagrams are grouped into <b>views</b>: diagrams that differ only in the red "you are here" dot are one view. Press <b>Use as layout</b> on each view and <b>Align</b> it: click a corner on the diagram, then the same corner of the outline. Three pairs place it; a fourth shows the fit in meters. Or press <b>Place by hand</b> and drag the diagram itself over the building: inside it to move it, a corner to resize it, an edge&rsquo;s middle dot to stretch it, the round knob to rotate it. The traces stay where they are unless you check <b>Move the traces with it</b>. <b>Rotate</b> the diagram under it if it is drawn turned. For a point nothing marks, draw <b>rulers</b> (R) on the diagram or the map: guide lines that hold Shift for 45&deg; steps, and clicks snap where they cross. If a grouping is wrong, move a diagram to another view.</li>
+      <li>Each floor's diagrams are grouped into <b>views</b>: diagrams that differ only in the red "you are here" dot are one view. Press <b>Use as layout</b> on each view and <b>Align</b> it: click a corner on the diagram, then the same corner of the outline. Three pairs place it; a fourth shows the fit in meters. Or press <b>Place by hand</b> and drag the diagram itself over the building: inside it to move it, a corner to resize it, an edge&rsquo;s middle dot to stretch it, the round knob to rotate it. What was traced on that diagram moves with it (uncheck <b>Move the traces with it</b> to move the diagram alone); traces from other diagrams under it stay put. <b>Rotate</b> the diagram under it if it is drawn turned. For a point nothing marks, draw <b>rulers</b> (R) on the diagram or the map: guide lines that hold Shift for 45&deg; steps, and clicks snap where they cross. If a grouping is wrong, move a diagram to another view.</li>
       <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap angles</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags at 0, 30, 45, 60 or 90&deg; from the floor's diagram (or the leveled wall); hold Shift to flip it. <b>Square to angles&hellip;</b> (Save panel) straightens a whole building's walls the same way. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
       <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
       <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it.</li>
@@ -492,7 +492,7 @@
     dragVertex: null,     // index of the floor-outline corner being dragged
     moveSel: null,        // Move tool: path -> the handle keys selected in it (handlesOf)
     marquee: null,        // Move tool: the box being dragged out, { a, b } on screen
-    placeCarry: false,    // Place by hand: what is traced on the diagram moves with it (off: only the diagram moves)
+    placeCarry: true,     // Place by hand: what was traced on the diagram moves with it (off: only the diagram moves)
     hideFloorOutline: false,    // this floor's own outline hidden (still drawn while the Floor outline tool is on)
     hideBuildingOutline: false,  // the building's outline hidden on a floor (always drawn on Building outline)
     spaceHeld: false,     // Space held: dragging pans in the Move tool
@@ -1167,10 +1167,10 @@
     var map = g0 ? carryMap(l.id, g0, fitOf(state.docs[path])) : function (q) { return q.layout === l.id ? pointAt(q) : q; };
     carry.forEach(function (x) { setDoc(x.path, carriedDoc(x.path, x.d, map)); });
   }
-  // Placing a diagram again carries what is traced on it: every point on this floor that was on its page (or
-  // was traced over it) keeps its spot on the page. With "Move the traces with it" off (the default since
-  // 2026-10-31: dragging a diagram dragged every trace on it) they stay put on the map and only their page
-  // position is updated. The building outline is every floor's, so it never moves.
+  // Placing a diagram again carries what was traced on it: only points tagged with this layout (drawn over it, or
+  // the auto trace's points from its drawing), never other diagrams' traces under its page. With "Move the traces
+  // with it" off they stay put on the map and only their page position is updated. The building outline is every
+  // floor's, so it never moves.
   function carryDocs() {
     var out = featuresOf(state.abbr).filter(function (x) { return handlesOf(x.path, x.d, state.floor).length; });
     var op = floorOutlinePath(state.abbr, state.floor);
@@ -1179,10 +1179,54 @@
   }
   function carryMap(layoutId, g0, g1) {
     return function (q) {
-      var im = affineToImage(g0, q.lat, q.lng);
-      if (q.layout !== layoutId && !(im.u >= 0 && im.u <= 1 && im.v >= 0 && im.v <= 1)) return q;
-      return pointAt(state.placeCarry ? affineToLatLng(g1, im.u, im.v) : q);
+      if (q.layout !== layoutId) return q;
+      var im = q.u == null ? affineToImage(g0, q.lat, q.lng) : { u: q.u, v: q.v };
+      if (state.placeCarry) return Object.assign({}, q, affineToLatLng(g1, im.u, im.v), { u: im.u, v: im.v });
+      im = affineToImage(g1, q.lat, q.lng);
+      return Object.assign({}, q, { u: im.u, v: im.v });
     };
+  }
+  // The auto trace says which drawing each item came from (`layout`; connectors per floor in `layouts`): tag
+  // every point with its diagram, so Place by hand moves a wing's traces with its own diagram. Older files
+  // without tags: a floor with one diagram owns all of it; on a floor with several, points stay untagged.
+  function tagAutoBuilding(b, layouts) {
+    var fits = {}, pieces = {};
+    layouts.forEach(function (l) {
+      fits[l.id] = fitAffine(l.pairs);
+      if (l.id.indexOf('auto' + l.floor + 'v') !== 0) (pieces[l.floor] = pieces[l.floor] || []).push(l.id);
+    });
+    var tag = function (p, id) {
+      if (!p || !id || !fits[id]) return;
+      var q = affineToImage(fits[id], p.lat, p.lng);
+      p.image = { layout: id, u: q.u, v: q.v };
+    };
+    var idOf = function (id, fl) { return id || ((pieces[fl] || []).length === 1 ? pieces[fl][0] : null); };
+    var ring = function (r, id) {
+      (r.corners || r.points || []).forEach(function (p) { tag(p, id); });
+      Object.keys(r.curves || {}).forEach(function (k) { tag(r.curves[k], id); });
+    };
+    var at = function (e) { return e && (e.at || e); };
+    ['rooms', 'solids', 'hallways', 'areas'].forEach(function (k) { (b[k] || []).forEach(function (r) { ring(r, idOf(r.layout, r.floor)); }); });
+    ['doors', 'entrances', 'objects'].forEach(function (k) { (b[k] || []).forEach(function (d) { tag(d.at, idOf(d.layout, d.floor)); }); });
+    (b.restrooms || []).forEach(function (r) { var id = idOf(r.layout, r.floor); tag(r.at, id); ring(r, id); });
+    (b.connectingDoors || []).concat(b.hallwayDoors || []).forEach(function (d) {
+      var id = idOf(d.layout, d.floor);
+      tag(d.at, id);
+      (d.sides || []).forEach(function (s) { tag(s.at, id); });
+      (d.span || []).forEach(function (p) { tag(p, id); });
+    });
+    (b.connectors || []).forEach(function (c) {
+      var idAt = function (fl) { return idOf((c.layouts || {})[fl], fl); };
+      Object.keys(c.entrances || {}).forEach(function (fl) { c.entrances[fl].forEach(function (e) { tag(at(e), idAt(fl)); }); });
+      Object.keys(c.stops || {}).forEach(function (fl) { tag(c.stops[fl], idAt(fl)); });
+      Object.keys(c.outlines || {}).forEach(function (fl) { ring(c.outlines[fl], idAt(fl)); });
+      if (c.at) tag(c.at, idAt(sortFloors(c.floors)[0]));
+    });
+    // A floor's outline pieces come one per drawing, in the layouts' order.
+    Object.keys(b.floorOutlines || {}).forEach(function (fl) {
+      var v = b.floorOutlines[fl], rings = Array.isArray(v[0]) ? v : [v], ids = pieces[fl] || [];
+      rings.forEach(function (r, k) { r.forEach(function (p) { tag(p, rings.length === ids.length ? ids[k] : idOf(null, fl)); }); });
+    });
   }
   function carriedDoc(path, f, map) {
     if (path.indexOf('outlines/') === 0) return { abbr: f.abbr, floor: f.floor, pieces: outlinePieces(f).map(function (r) { return r.map(map); }) };
@@ -2515,7 +2559,7 @@
         var carryBox = el('input', { type: 'checkbox', id: 'place-carry', checked: state.placeCarry || null });
         carryBox.addEventListener('change', function () { state.placeCarry = carryBox.checked; });
         body.appendChild(el('label', { class: 'check', for: 'place-carry' }, [carryBox,
-          'Move the traces and floor ' + state.floor + '\u2019s outline with it (everything on its page keeps its spot on the diagram; Undo puts both back)']));
+          'Move what was traced on this diagram with it (its traces keep their spot on the page; other diagrams’ traces stay put; Undo puts both back)']));
         var turn = function (deg) {
           var now = placementOf(pl), c = vadd(now.O, vmul(vadd(now.A, now.B), 0.5)), a = deg * Math.PI / 180, A = vrot(now.A, a), B = vrot(now.B, a);
           setPlacement(state.placing, { O: vsub(c, vmul(vadd(A, B), 0.5)), A: A, B: B });
@@ -4986,6 +5030,7 @@
       fetch('auto/' + encodeURIComponent(abbr) + '.json').then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
         .then(function (auto) {
           var file = { version: 1, buildings: {} };
+          tagAutoBuilding(auto.building, auto.layouts || []);
           file.buildings[abbr] = auto.building;
           replaceDraftWith(file, 'the auto trace of ' + nameOf(abbr), [abbr]);
           (auto.layouts || []).forEach(function (l) {
