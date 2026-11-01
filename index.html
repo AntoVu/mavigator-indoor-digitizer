@@ -1451,15 +1451,20 @@
     });
   }
   // How edge f faces edge e from e's outer side: { d (gap), lo, hi (the stretch of e it covers) } or null. A
-  // neighbor's wall faces back (normals opposite); the floor outline faces the same way (both point out).
+  // neighbor's wall faces back (normals opposite); the floor outline faces the same way (both point out). The gap
+  // is measured over the stretch of e that f covers, not at f's middle: a long outline wall a few degrees off is
+  // meters nearer or farther at its far end. Against the outline it is the nearer end, so a room never passes it.
   function facing(e, f, sameWay, max) {
     var dot = e.n.x * f.n.x + e.n.y * f.n.y;
     if (sameWay ? dot < GAP_COS : dot > -GAP_COS) return null;
-    var da = (f.a.x - e.a.x) * e.n.x + (f.a.y - e.a.y) * e.n.y, db = (f.b.x - e.a.x) * e.n.x + (f.b.y - e.a.y) * e.n.y, d = (da + db) / 2;
-    if (d < -0.05 || d > max) return null;
+    var da = (f.a.x - e.a.x) * e.n.x + (f.a.y - e.a.y) * e.n.y, db = (f.b.x - e.a.x) * e.n.x + (f.b.y - e.a.y) * e.n.y;
     var ta = (f.a.x - e.a.x) * e.u.x + (f.a.y - e.a.y) * e.u.y, tb = (f.b.x - e.a.x) * e.u.x + (f.b.y - e.a.y) * e.u.y;
     var lo = Math.max(0, Math.min(ta, tb)), hi = Math.min(e.L, Math.max(ta, tb));
-    return hi - lo > 0.05 ? { d: d, lo: lo, hi: hi } : null;
+    if (hi - lo <= 0.05) return null;
+    var at = function (t) { return Math.abs(tb - ta) < 1e-9 ? (da + db) / 2 : da + (db - da) * (t - ta) / (tb - ta); };
+    var dlo = at(lo), dhi = at(hi), d = sameWay ? Math.min(dlo, dhi) : (dlo + dhi) / 2;
+    if (d < -0.05 || Math.max(dlo, dhi) > max) return null;
+    return { d: d, lo: lo, hi: hi };
   }
   function coverOf(list) {
     var s = list.slice().sort(function (p, q) { return p.lo - q.lo; }), len = 0, end = -Infinity;
@@ -3464,8 +3469,8 @@
     return next;
   }
   // Where a room corner lands: another room's corner or a corner of the floor's walls within
-  // SNAP_PX; else lined up with one (alignGuides); else a point on another room's edge or the
-  // walls; else null. `skip`: { path, i }, the corner being dragged (its own room's edges are
+  // SNAP_PX; else a point on another room's edge or the walls; else lined up with a corner
+  // (alignGuides); else null. `skip`: { path, i }, the corner being dragged (its own room's edges are
   // skipped too). A result is { d, ll, guides? }.
   function roomSnap(pos, skip, exclude) {
     if (!state.snapFeatures) return null;
@@ -3479,8 +3484,8 @@
     if (!exclude.walls) corners = corners.concat(outlineCorners());
     corners.forEach(function (p) { var q = toScreen(p.lat, p.lng); consider(p, Math.hypot(q.x - pos.x, q.y - pos.y)); });
     if (best) return best;
-    var lined = alignGuides(pos, corners);
-    if (lined) return lined;
+    // A wall or room edge within reach before the smart guides: with many corners some guide almost always lines
+    // up, and checked first it kept corners off the floor outline.
     var onLine = function (line) {
       for (var k = 1; k < line.length; k++) {
         var a = toScreen(line[k - 1].lat, line[k - 1].lng), b = toScreen(line[k].lat, line[k].lng), pr = segProject(pos, a, b);
@@ -3489,7 +3494,7 @@
     };
     rooms.forEach(function (x) { if (!(skip && x.path === skip.path)) x.d.points.forEach(function (_, i) { onLine(edgeSamples(x.d, i)); }); });
     if (!exclude.walls) wallRings().forEach(function (ring) { onLine(ring.concat([ring[0]])); });
-    return best;
+    return best || alignGuides(pos, corners);
   }
   // Smart guides, as in Google Slides: along each of the building's two wall directions, the point
   // moves onto the line through the nearest corner within GUIDE_PX (each direction on its own), and a
