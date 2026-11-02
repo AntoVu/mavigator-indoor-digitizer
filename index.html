@@ -5327,6 +5327,8 @@
     });
     Object.keys(next).forEach(function (path) { if (!sameDoc(state.docs[path], next[path])) { setDoc(path, next[path]); count++; } });
     migrateRooms(true);
+    // A building opened before it had floors has none selected: pick one, or the map stays blank.
+    if (state.abbr && floorsOf(state.abbr).indexOf(state.floor) < 0) openBuilding(state.abbr);
     flash('Loaded ' + sourceName + ': ' + (count ? count + ' change' + (count === 1 ? '' : 's') : 'nothing changed') + '.', false);
   }
   // Two docs with the same content, whatever order their keys are in (the db may reorder them).
