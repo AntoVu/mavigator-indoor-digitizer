@@ -348,7 +348,8 @@
           <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 30, 45, 60 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button>
           <button class="small" id="btn-gaps" type="button" hidden title="Grows rooms across the wall gaps the script leaves: neighbors meet in the middle, and rooms reach the floor outline. Never crosses a hallway. Undo puts them back.">Close wall gaps…</button>
           <button class="small" id="btn-tidy" type="button" hidden title="Rebuilds rooms from their real walls: teeth, door notches and cut corners go, walls a wall's thickness apart or near the outline line up, rooms grow to the next room in their row, and overlaps are settled. Rooms already clean stay put and guide the rest. Undo puts them back.">Tidy rooms…</button>
-          <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button></div>
+          <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
+          <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button></div>
         <div class="msg" id="save-msg" aria-live="polite"></div>
         <textarea id="json-out" hidden aria-label="indoor-edits.json contents"></textarea>
         <div class="actions">
@@ -510,7 +511,9 @@
     hover: 'map',         // the canvas the pointer was last over, for R
     dsnap: null, dcursor: null, // diagram snap ring and ruler preview, page units
     guides: null,         // smart guide lines while placing a room corner: [{ a, b }] in lat/lng
-    lineUp: null          // Line up to a line while on: { start: lat/lng or null }
+    lineUp: null,         // Line up to a line while on: { start: lat/lng or null }
+    doorBox: null,        // Doors into rooms: the area being boxed, { start: lat/lng or null, reach }
+    doorPreview: null     // Doors into rooms: the matches found, [{ path, room, other, at, inside, outside, on }]
   };
 
   // ---- geometry ----------------------------------------------------------------------------------
@@ -1738,7 +1741,7 @@
   function openBuilding(abbr) {
     state.abbr = abbr;
     state.selection = null; state.current = null; state.alignLayout = null;
-    state.rulers = []; state.addingRuler = false; state.rulerStart = null; state.lineUp = null;
+    state.rulers = []; state.addingRuler = false; state.rulerStart = null; state.lineUp = null; state.doorBox = null; state.doorPreview = null;
     // The floor last open here, else the first with an aligned diagram, else the lowest.
     var floors = floorsOf(abbr);
     var aligned = floors.filter(function (f) { return layoutsOn(abbr, f).some(function (l) { return fitOf(l.d); }); })[0];
@@ -1748,7 +1751,7 @@
     renderPanels();
   }
   function setFloor(f) {
-    state.floor = f; state.current = null; state.selection = null; state.outlineBox = null; state.outlinePiece = null; state.moveSel = null;
+    state.floor = f; state.current = null; state.selection = null; state.outlineBox = null; state.outlinePiece = null; state.moveSel = null; state.doorBox = null; state.doorPreview = null;
     if (state.abbr && f) { state.lastFloor[state.abbr] = f; saveLocal(); }
     if (state.alignLayout && (!state.docs[state.alignLayout] || state.docs[state.alignLayout].floor !== f)) state.alignLayout = null;
     // Floor outline mode stays on, so the new floor gets its starting outline as entering the mode would.
@@ -1925,6 +1928,19 @@
       ctx.strokeStyle = C.accent; ctx.lineWidth = 3; seg(0, 0);
       if (lL > 0.01) { var reach = lineUpReach(), nx = -(lb.y - la.y) / lL * reach, ny = (lb.x - la.x) / lL * reach; ctx.lineWidth = 1; ctx.setLineDash([4, 4]); ctx.globalAlpha = 0.6; seg(nx, ny); seg(-nx, -ny); ctx.setLineDash([]); ctx.globalAlpha = 1; }
     }
+
+    // Doors into rooms: the area being boxed, and the matches found (ticked ones solid, unticked faint).
+    if (state.doorBox && state.doorBox.start && state.cursor) {
+      var dend = state.snap || state.cursor, dbox = boxCorners(state.doorBox.start, dend) || [state.doorBox.start, dend];
+      ctx.setLineDash([6, 5]); ctx.strokeStyle = C.accent; ctx.lineWidth = 2; ctx.stroke(pointRingPath(dbox)); ctx.setLineDash([]);
+    }
+    if (state.doorPreview) state.doorPreview.forEach(function (x) {
+      var a = toScreen(x.inside.lat, x.inside.lng), b = toScreen(x.outside.lat, x.outside.lng), c = toScreen(x.at.lat, x.at.lng);
+      ctx.globalAlpha = x.on ? 1 : 0.35;
+      ctx.strokeStyle = C.ok; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.strokeStyle = C.warn; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(c.x, c.y, 11, 0, 7); ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
 
     // Alignment pairs of the layout being aligned.
     var al = state.docs[state.alignLayout];
@@ -2224,7 +2240,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
-    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = !(abbr && featuresOf(abbr).length);
+    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -4416,6 +4432,7 @@
     if (state.mode === 'align' && state.addingRuler === 'map') t = state.rulerStart ? 'Click a second point on the ruler · hold Shift for 45\u00b0 steps · Esc cancels' : 'Click where the ruler starts · it snaps to corners, walls and rulers · Esc cancels';
     if (state.abbr && !state.floor) t = 'Add diagrams or a floor to start';
     if (state.abbr && state.leveling) t = 'Click a wall of the outline to level it · Esc cancels';
+    if (state.abbr && state.doorBox) t = state.doorBox.start ? 'Click the opposite corner of the area · Esc cancels' : 'Click one corner of the area to look for doors into rooms · Esc cancels';
     if (state.abbr && state.lineUp) t = state.lineUp.start ? 'Click where the line ends · walls within ' + lineUpReach() + ' m move onto it · Esc cancels' : 'Click where the line starts, along a hallway or a row of rooms · Esc stops';
     $('mode-hint').textContent = t;
   }
@@ -4627,6 +4644,7 @@
     if (!state.abbr) { var a = buildingAt(pos); if (a) openBuilding(a); return; }
     if (state.leveling) return levelClick(pos);
     if (state.lineUp) return lineUpClick(pos);
+    if (state.doorBox) return doorBoxClick(pos);
     if (state.addingEntrance) return addEntrance(pos);
     if (state.mode === 'select') {
       var sr = selectedRoom();
@@ -4715,6 +4733,7 @@
     state.guides = s && s.guides || null;
     if (state.addingRuler === 'map' && state.rulerStart) state.cursor = rulerEnd(p);
     if (state.lineUp) { var ls = anySnap(p); state.snap = ls ? ls.ll : null; state.cursor = lineUpEnd(p); scheduleRender(); }
+    if (state.doorBox) { var ds = roomSnap(p); state.snap = ds ? ds.ll : null; if (state.doorBox.start) scheduleRender(); }
     var last = state.mode === 'hallway' && state.current ? state.current[state.current.length - 1]
       : state.mode === 'area' && state.areaTrace ? state.areaTrace[state.areaTrace.length - 1] : state.mode === 'door' && state.cdoorStart ? state.cdoorStart : null;
     if (!s && last && snapOn()) state.cursor = snapFrom(last, state.cursor);
@@ -4724,7 +4743,7 @@
     if ((state.mode === 'hallway' && state.current) || state.roomStart || state.areaTrace || state.cdoorStart || state.rulerStart || (state.outlineBox && state.outlineBox.start)) scheduleRender(); else if (s || state.snapWas) scheduleRender();
     state.snapWas = !!s;
   }, function (p) {
-    if (!state.abbr || state.leveling || state.lineUp) return null;
+    if (!state.abbr || state.leveling || state.lineUp || state.doorBox) return null;
     if (state.mode === 'place') return grabPlacement(p);
     if (state.mode === 'move') return grabMove(p);
     var editing = (state.mode === 'select' || state.mode === 'room') && !state.roomStart && !state.roomPending && !state.addingEntrance;
@@ -4812,6 +4831,7 @@
     if ((e.ctrlKey || e.metaKey) && !e.altKey && key === 'c' && state.abbr && copySelection()) return e.preventDefault();
     if ((e.ctrlKey || e.metaKey) && !e.altKey && key === 'v' && state.abbr) { e.preventDefault(); return pasteClipboard(); }
     if (e.key === 'Escape' && state.leveling) { state.leveling = false; return renderPanels(); }
+    if (e.key === 'Escape' && (state.doorBox || state.doorPreview)) { state.doorBox = null; state.doorPreview = null; $('confirm-slot').innerHTML = ''; renderPanels(); return scheduleRender(); }
     if (e.key === 'Escape' && state.lineUp) { if (state.lineUp.start) state.lineUp.start = null; else state.lineUp = null; renderPanels(); return scheduleRender(); }
     if (e.key === 'Escape' && state.addingRuler) return cancelRuler();
     if ((e.key === 'r' || e.key === 'R') && state.mode === 'align' && !e.ctrlKey && !e.metaKey && !e.altKey) return startRuler(state.hover === 'diagram' && state.alignLayout ? 'diagram' : 'map');
@@ -5607,6 +5627,138 @@
     flash(n ? 'Lined up ' + n + ' room' + (n === 1 ? '' : 's') + ' to the line. Undo puts them back; draw the next line, or Esc to stop.'
       : 'No room wall runs along that line within ' + lineUpReach() + ' m.', !n);
     renderPanels(); scheduleRender();
+  }
+  // ---- doors into rooms ------------------------------------------------------------------------------
+  // A room door whose other side is another room, not a hallway (a room traced late, like an office suite's big room):
+  // doorsIntoRoomsXY finds them so they become doors between rooms. Pure, in local meters. doors: [{ room, at }];
+  // rooms: [{ room, ring }] (numbered rooms only). For each door: { other, at, inside, outside } (the doorway, a point
+  // just inside its own room, one just inside the other), or { skip: 'hallway' | 'no-room' | 'off-wall' }.
+  // The other room is found by stepping straight out from the wall the door sits on, so a door on a hallway wall near
+  // a corner never picks the neighbor around the corner.
+  var DOOR_INTO = { reach: 1.0, wallReach: 1.0, step: 0.05, inset: 0.25 };
+  function doorsIntoRoomsXY(doors, rooms, opt) {
+    opt = Object.assign({}, DOOR_INTO, opt || {});
+    return doors.map(function (d) {
+      var own = rooms.filter(function (r) { return r.room === d.room; });
+      if (!own.length) return { skip: 'no-room' };
+      // The wall of its own room nearest the door: its foot, and the normal pointing out of the room.
+      var best = null;
+      own.forEach(function (r) {
+        r.ring.forEach(function (a, i) {
+          var b = r.ring[(i + 1) % r.ring.length], dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy);
+          if (L < 0.05) return;
+          var t = Math.max(0, Math.min(1, ((d.at.x - a.x) * dx + (d.at.y - a.y) * dy) / (L * L)));
+          var f = { x: a.x + t * dx, y: a.y + t * dy }, dist = Math.hypot(d.at.x - f.x, d.at.y - f.y);
+          if (!best || dist < best.dist) best = { dist: dist, f: f, n: { x: dy / L, y: -dx / L }, ring: r.ring };
+        });
+      });
+      if (best.dist > opt.wallReach) return { skip: 'off-wall' };
+      var f = best.f, n = best.n;
+      if (inRing({ x: f.x + n.x * 0.05, y: f.y + n.y * 0.05 }, best.ring)) n = { x: -n.x, y: -n.y };
+      var at = function (t) { return { x: f.x + n.x * t, y: f.y + n.y * t }; };
+      for (var t = opt.step; t <= opt.reach + 1e-9; t += opt.step) {
+        var q = at(t);
+        var hit = rooms.filter(function (r) { return r.room !== d.room && inRing(q, r.ring); })[0];
+        if (hit) return { other: hit.room, at: at(t / 2), inside: at(-opt.inset), outside: at(t + opt.inset) };
+      }
+      return { skip: 'hallway' };
+    });
+  }
+  // Doors into rooms: pick the reach and where to look, then check the list and convert (one Undo).
+  $('btn-doors-into').addEventListener('click', function () {
+    var abbr = state.abbr, slot = $('confirm-slot');
+    if (!abbr || !state.floor || state.floor === SHAPE) return flash('Open a floor first.', true);
+    var reach = el('input', { type: 'number', value: '1', min: '0.2', max: '3', step: '0.1', style: 'width: 5em', 'aria-label': 'meters' });
+    var meters = function () { return Math.min(3, Math.max(0.2, Number(reach.value) || 1)); };
+    slot.innerHTML = '';
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: 'Find room doors on floor ' + state.floor + ' that open into another room rather than a hallway, and make them doors between the two rooms. From each door the tool steps straight out of its room\u2019s wall; the first other numbered room it meets is the one it connects to. Doors farther than that from their own room\u2019s wall are skipped.' }),
+      el('label', { class: 'check' }, ['Other room within ', reach, ' m of the wall']),
+      el('div', { class: 'actions' }, [
+        button('Whole floor', function () { showDoorMatches(scanDoorsInto(null, meters())); }, 'primary'),
+        button('Box an area', function () {
+          slot.innerHTML = '';
+          state.doorBox = { start: null, reach: meters() };
+          state.doorPreview = null;
+          renderPanels(); scheduleRender();
+          flash('Click one corner of the area, then the opposite corner. Esc cancels.', false);
+        }),
+        button('Cancel', function () { slot.innerHTML = ''; })
+      ])]));
+    slot.scrollIntoView({ block: 'nearest' });
+  });
+  // Room doors on this floor (inside `box`, lat/lng corners, when given) that open into another room.
+  function scanDoorsInto(box, reach) {
+    var floor = state.floor, fs = featuresOf(state.abbr), xy = function (p) { return toXY(p.lat, p.lng); };
+    var rooms = fs.filter(function (x) { return x.d.kind === 'room' && x.d.floor === floor && x.d.room && !x.d.use && !x.d.solid && !x.d.plain; })
+      .map(function (x) { return { room: x.d.room, ring: roomRing(x.d).map(xy) }; });
+    var inBox = function (p) {
+      if (!box) return true;
+      var lats = box.map(function (q) { return q.lat; }), lngs = box.map(function (q) { return q.lng; });
+      return p.lat >= Math.min.apply(null, lats) && p.lat <= Math.max.apply(null, lats) && p.lng >= Math.min.apply(null, lngs) && p.lng <= Math.max.apply(null, lngs);
+    };
+    var doors = fs.filter(function (x) { return x.d.kind === 'door' && x.d.floor === floor && x.d.room && inBox(x.d.points[0]); });
+    var res = doorsIntoRoomsXY(doors.map(function (x) { return { room: x.d.room, at: xy(x.d.points[0]) }; }), rooms, { reach: reach, wallReach: reach });
+    var ll = function (p) { return fromXY(p.x, p.y); }, out = { found: [], hallway: 0, problems: [] };
+    // Pairs of rooms that already have a door between them: converting would make a second one.
+    var pair = function (a, b) { return [a, b].sort().join('\u0000'); }, joined = {};
+    fs.forEach(function (x) { if (x.d.kind === 'cdoor' && x.d.floor === floor) joined[pair(x.d.rooms[0], x.d.rooms[1])] = true; });
+    res.forEach(function (r, i) {
+      var d = doors[i];
+      if (r.other && joined[pair(d.d.room, r.other)]) out.problems.push(d.d.room + ': already has a door to ' + r.other);
+      else if (r.other) out.found.push({ path: d.path, room: d.d.room, other: r.other, at: ll(r.at), inside: ll(r.inside), outside: ll(r.outside), on: true });
+      else if (r.skip === 'hallway') out.hallway++;
+      else out.problems.push(d.d.room + (r.skip === 'no-room' ? ': no room ' + d.d.room + ' traced on this floor' : ': more than ' + reach + ' m from room ' + d.d.room + '\u2019s walls'));
+    });
+    return out;
+  }
+  // The list to check: each match ticked, ringed on the map; Convert turns the ticked ones into doors between rooms.
+  function showDoorMatches(m) {
+    var slot = $('confirm-slot');
+    state.doorPreview = m.found;
+    slot.innerHTML = '';
+    var convert = button('Convert ' + m.found.length, function () {
+      var abbr = state.abbr, floor = state.floor, n = 0;
+      m.found.filter(function (x) { return x.on; }).forEach(function (x) {
+        var d = state.docs[x.path];
+        if (!d) return;
+        var k = newKey('k'), pass = {};
+        // Who may come from the other room into this one (the door's "in"), and back out (its "out").
+        if (d.exit && d.exit !== 'anyone') pass.aToB = d.exit;
+        if (d.enter && d.enter !== 'anyone') pass.bToA = d.enter;
+        setDoc(x.path, null);
+        setDoc('features/' + abbr + '_' + k, Object.assign({ abbr: abbr, kind: 'cdoor', key: k, floor: floor, rooms: [x.room, x.other],
+          points: [pointOn(x.at, floor), pointOn(x.inside, floor), pointOn(x.outside, floor)] }, Object.keys(pass).length ? { pass: pass } : {}, d.emergency ? { emergency: true } : {}));
+        n++;
+      });
+      state.doorPreview = null; slot.innerHTML = '';
+      flash(n ? 'Turned ' + n + ' door' + (n === 1 ? '' : 's') + ' into doors between rooms. Undo puts them back.' : 'Nothing ticked, so nothing changed.', false);
+      renderPanels(); scheduleRender();
+    }, 'primary');
+    var count = function () { var k = m.found.filter(function (x) { return x.on; }).length; convert.textContent = 'Convert ' + k; convert.disabled = !k; };
+    var rows = m.found.map(function (x, i) {
+      var box = el('input', { type: 'checkbox', id: 'dir-' + i, checked: true });
+      box.addEventListener('change', function () { x.on = box.checked; count(); scheduleRender(); });
+      return el('label', { class: 'check', for: 'dir-' + i }, [box, 'Room ' + x.room + ' \u2192 room ' + x.other]);
+    });
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: m.found.length ? m.found.length + ' door' + (m.found.length === 1 ? '' : 's') + ' open into another room (ringed on the map; the green line runs from one side to the other). Untick any that are wrong.' : 'No door here opens into another room.' }),
+      el('div', {}, rows),
+      el('span', { class: 'meta', text: m.hallway + ' door' + (m.hallway === 1 ? '' : 's') + ' open onto a hallway and stay as they are.' + (m.problems.length ? ' Skipped: ' + m.problems.join('; ') + '.' : '') }),
+      el('div', { class: 'actions' }, [m.found.length ? convert : null, button('Cancel', function () { state.doorPreview = null; slot.innerHTML = ''; scheduleRender(); })])
+    ]));
+    count();
+    slot.scrollIntoView({ block: 'nearest' });
+    scheduleRender();
+  }
+  function doorBoxClick(pos) {
+    var s = roomSnap(pos), ll = s ? s.ll : fromScreen(pos.x, pos.y), b = state.doorBox;
+    if (!b.start) { b.start = ll; updateHint(); return scheduleRender(); }
+    var box = boxCorners(b.start, ll);
+    if (!box) return flash('Too thin: make the box at least half a meter each way.', true);
+    state.doorBox = null;
+    renderPanels();
+    showDoorMatches(scanDoorsInto(box, b.reach));
   }
   // The script's draft of this building, with each floor's diagram already aligned (auto/<key>.json). Only this
   // building changes; the PDFs come from Add folder as usual, and each layout draws once its PDF is here.

@@ -45,6 +45,13 @@ a person has to check it against the diagrams and fix the rest. That review is t
    it ends, along a hallway's edge or a row of rooms. Every room wall that runs along it, within the distance you set,
    moves onto it. Keep that distance under the hallway's width, or the rooms across the hallway move too. It stays on
    for the next line; Esc stops.
+
+   **Doors into rooms…** (Save panel) is for offices inside a suite: a room's door that opens into another room
+   instead of a hallway, common after you add a room the script missed. It finds those doors on the whole floor or
+   in a box you draw. It steps straight out from the wall each door sits on, and the first other numbered room
+   within the distance you set is the room it connects to. It lists what it found and rings each door on the map;
+   untick any that are wrong, then **Convert** turns them into doors between rooms. Doors farther than the distance
+   from their own room's wall are skipped, as are rooms already joined by a door between them. Undo puts them back.
    Some buildings join others inside (Science Hall into the Chemistry & Physics Building on floor 3, Trimble and
    Hammond, Preston, Carlisle and Ransom). Place an **Entrance** at that doorway and set **Leads to** the other
    building and the floor it opens onto there, which can be any floor. It only has to be in one of the two
