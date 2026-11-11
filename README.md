@@ -32,6 +32,19 @@ a person has to check it against the diagrams and fix the rest. That review is t
    middle and rooms reach the floor outline. It never crosses a hallway or a gap wider than its limit (0.6 m between
    rooms, 0.8 m to the outline). Best order: place the diagram, then Simplify, Square to angles, Close wall gaps, and
    fix the details last.
+
+   **Tidy rooms…** (next to Close wall gaps) does most of a floor's cleanup in one press. Each room is rebuilt from
+   its real walls, so door-swing teeth, notches and cut-off corners go. Walls a wall's thickness from a neighbor's,
+   or near the outline, move onto one line. A room short of the next room in its row grows out to it, but never
+   across a hallway, into another room or past the outline. Overlapping rooms are split. Rooms that are already
+   clean rectangles stay put and lead: fix one room in a row by hand against the diagram, press Tidy, and the rest of
+   the row lines up with it. Rooms with a long slanted wall or curves are left as drawn. Then check each floor
+   against its diagram, because it lines rooms up with each other, not with the PDF.
+
+   **Line up to a line** (beside Level to a wall) is for a row Tidy gets wrong. Click where a line starts and where
+   it ends, along a hallway's edge or a row of rooms. Every room wall that runs along it, within the distance you set,
+   moves onto it. Keep that distance under the hallway's width, or the rooms across the hallway move too. It stays on
+   for the next line; Esc stops.
    Some buildings join others inside (Science Hall into the Chemistry & Physics Building on floor 3, Trimble and
    Hammond, Preston, Carlisle and Ransom). Place an **Entrance** at that doorway and set **Leads to** the other
    building and the floor it opens onto there, which can be any floor. It only has to be in one of the two
