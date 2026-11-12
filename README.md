@@ -53,8 +53,8 @@ a person has to check it against the diagrams and fix the rest. That review is t
    untick any that are wrong, then **Convert** turns them into doors between rooms. Doors farther than the distance
    from their own room's wall are skipped, as are rooms already joined by a door between them. Undo puts them back.
 
-   **Snap doors to their room…** (Tools panel) moves each room door onto the nearest wall of its own room, on the
-   whole floor or in a box you draw. Doors farther than the distance you set (1.5 m to start) are left alone and
+   **Snap doors to their room…** (Tools panel) moves each room door onto the nearest wall of its own room (a door
+   between rooms onto the nearer wall of its two rooms, sides and all), on the whole floor or in a box you draw. Doors farther than the distance you set (1.5 m to start) are left alone and
    listed, as are doors whose room has no outline. Undo puts them back.
    Some buildings join others inside (Science Hall into the Chemistry & Physics Building on floor 3, Trimble and
    Hammond, Preston, Carlisle and Ransom). Place an **Entrance** at that doorway and set **Leads to** the other

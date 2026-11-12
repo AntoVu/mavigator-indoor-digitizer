@@ -234,7 +234,7 @@
       <li><b>Click a building</b> on the campus map. Nedderman, ERB and Woolf are labeled, but any building opens, even just to mark its entrances.</li>
       <li>Each floor's diagrams are grouped into <b>views</b>: diagrams that differ only in the red "you are here" dot are one view. Press <b>Use as layout</b> on each view and <b>Align</b> it: click a corner on the diagram, then the same corner of the outline. Three pairs place it; a fourth shows the fit in meters. Or press <b>Place by hand</b> and drag the diagram itself over the building: inside it to move it, a corner to resize it, an edge&rsquo;s middle dot to stretch it, the round knob to rotate it. What was traced on that diagram moves with it (uncheck <b>Move the traces with it</b> to move the diagram alone); traces from other diagrams under it stay put. <b>Rotate</b> the diagram under it if it is drawn turned. For a point nothing marks, draw <b>rulers</b> (R) on the diagram or the map: guide lines that hold Shift for 45&deg; steps, and clicks snap where they cross. If a grouping is wrong, move a diagram to another view.</li>
       <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap angles</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags at 0, 30, 45, 60 or 90&deg; from the floor's diagram (or the leveled wall); hold Shift to flip it. Whatever you draw or drag, and the selected room or hallway, shows each edge's angle from the diagram: <b>green &check;</b> when it is exactly on 0, 30, 45, 60 or 90&deg;, <b>amber</b> with how far off (&ldquo;1.4&deg; off 90&deg;&rdquo;) when it is close but not on. <b>Square to angles&hellip;</b> (Tools panel) straightens a whole building's walls the same way. <b>Tidy rooms&hellip;</b> (Tools panel) does the rest of a cleanup in one go: each room rebuilt from its real walls (teeth, door notches and cut corners go), walls lined up with the neighbor's and the outline, rooms grown to the next room in their row, overlaps settled. Fix one room of a row by hand first and the rest line up with it. <b>Line up to a line</b>: click along a hallway or row, and every room wall near that line moves onto it. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
-      <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Drag a room door, a gate (its bar), a door between rooms (its middle dot) or an entrance to move it, no Move needed. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
+      <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Drag an entrance to slide it along the wall, no Move needed. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
       <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it.</li>
       <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions), or the round knob above the box to rotate it (Shift turns in 15° steps). <b>Delete</b> removes what's boxed: whole items, or just the boxed corners of a room, area or hallway (box a cutout's corners to remove it). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
       <li><b>Undo</b> with Ctrl+Z and <b>redo</b> with Ctrl+Y (or Ctrl+Shift+Z), or the buttons by Fit: any change, from a dragged corner to an opened file. While drawing (a hallway, an area, a room box), Ctrl+Z takes back the last point first.</li>
@@ -328,7 +328,7 @@
           <button class="small" id="btn-tidy" type="button" hidden title="Rebuilds rooms from their real walls: teeth, door notches and cut corners go, walls a wall's thickness apart or near the outline line up, rooms grow to the next room in their row, and overlaps are settled. Rooms already clean stay put and guide the rest. Undo puts them back.">Tidy rooms…</button>
           <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
           <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button>
-          <button class="small" id="btn-snap-doors" type="button" hidden title="Moves each room door onto the nearest wall of its own room, on this floor or in a box you draw. Doors farther than the distance you set are left alone and listed. Undo puts them back.">Snap doors to their room…</button></div>
+          <button class="small" id="btn-snap-doors" type="button" hidden title="Moves each room door onto the nearest wall of its own room (a door between rooms onto either of its two), on this floor or in a box you draw. Doors farther than the distance you set are left alone and listed. Undo puts them back.">Snap doors to their room…</button></div>
         <div class="msg" id="tools-msg" aria-live="polite"></div>
         <div id="tools-slot"></div>
       </div>
@@ -4614,39 +4614,27 @@
       }
     };
   }
-  // A room door, a hallway door (gate, by its dot or bar), a door between rooms (by its dot) or an entrance dragged: the whole door
-  // moves, as in Move; an entrance stays on the wall. A press without a drag is a click (selects it).
+  // An entrance dragged in Select: it slides along the wall. A press without a drag is a click (selects it).
   function grabDoor(p) {
     var hit = null;
     featuresOf(state.abbr).forEach(function (x) {
       var f = x.d;
-      if ((f.kind !== 'gate' && f.kind !== 'cdoor' && f.kind !== 'door' && f.kind !== 'entrance') || f.floor !== state.floor) return;
+      if (f.kind !== 'entrance' || f.floor !== state.floor) return;
       var s = toScreen(f.points[0].lat, f.points[0].lng), d = Math.hypot(s.x - p.x, s.y - p.y);
-      if (f.kind === 'gate') {
-        var e = gateSpan(f).map(function (q) { return toScreen(q.lat, q.lng); });
-        d = Math.min(d, segProject(p, e[0], e[1]).distance);
-      }
-      if (d <= CONNECTOR_HIT_PX && (!hit || d < hit.d)) hit = { d: d, path: x.path, entrance: f.kind === 'entrance' };
+      if (d <= CONNECTOR_HIT_PX && (!hit || d < hit.d)) hit = { d: d, path: x.path };
     });
     if (!hit) return null;
-    if (hit.entrance) {
-      var path = hit.path, wasMoved = false;
-      return {
-        move: function (q) {
-          if (!wasMoved && Math.hypot(q.x - p.x, q.y - p.y) <= 3) return;
-          wasMoved = true;
-          holdOriginal(path);
-          var ll = fromScreen(q.x, q.y), wall = nearestWall(ll);
-          state.docs[path] = Object.assign({}, state.docs[path], { points: [pointAt(wall ? wall.ll : ll)] });
-          scheduleRender();
-        },
-        end: function (q) { if (wasMoved) { setDoc(path, state.docs[path]); renderPanels(); } else handleClick(q); }
-      };
-    }
-    var drag = dragSelection(wholeFeature(hit.path), p), moved = false;
+    var path = hit.path, moved = false;
     return {
-      move: function (q, e) { if (Math.hypot(q.x - p.x, q.y - p.y) > 3) moved = true; drag.move(q, e); },
-      end: function (q) { drag.end(q); if (!moved) handleClick(q); else renderPanels(); }
+      move: function (q) {
+        if (!moved && Math.hypot(q.x - p.x, q.y - p.y) <= 3) return;
+        moved = true;
+        holdOriginal(path);
+        var ll = fromScreen(q.x, q.y), wall = nearestWall(ll);
+        state.docs[path] = Object.assign({}, state.docs[path], { points: [pointAt(wall ? wall.ll : ll)] });
+        scheduleRender();
+      },
+      end: function (q) { if (moved) { setDoc(path, state.docs[path]); renderPanels(); } else handleClick(q); }
     };
   }
   function hitTest(pos) {
@@ -5749,15 +5737,19 @@
     var moved = 0, on = 0, noRoom = [], far = [];
     fs.forEach(function (x) {
       var d = x.d;
-      if (d.kind !== 'door' || d.floor !== floor || !inBox(d.points[0])) return;
-      if (!d.room || !rings[d.room]) return noRoom.push(d.room || '(no number)');
+      if ((d.kind !== 'door' && d.kind !== 'cdoor') || d.floor !== floor || !inBox(d.points[0])) return;
+      var names = d.kind === 'cdoor' ? d.rooms : [d.room], label = names.join('/');
+      var own = [].concat.apply([], names.map(function (n) { return (n && rings[n]) || []; }));
+      if (!own.length) return noRoom.push(label || '(no number)');
       var at = xy(d.points[0]), best = null;
-      rings[d.room].forEach(function (r) {
+      own.forEach(function (r) {
         r.forEach(function (a, i) { var pr = segProject(at, a, r[(i + 1) % r.length]); if (!best || pr.distance < best.distance) best = pr; });
       });
-      if (best.distance > reach) return far.push(d.room + ' (' + best.distance.toFixed(1) + ' m)');
+      if (best.distance > reach) return far.push(label + ' (' + best.distance.toFixed(1) + ' m)');
       if (best.distance < 0.01) return on++;
-      setDoc(x.path, Object.assign({}, d, { points: [pointAt(fromXY(best.point.x, best.point.y))] }));
+      // The whole door shifts: a door between rooms keeps its two sides the same way across.
+      var dx = best.point.x - at.x, dy = best.point.y - at.y;
+      setDoc(x.path, Object.assign({}, d, { points: d.points.map(function (q) { var v = xy(q); return pointAt(fromXY(v.x + dx, v.y + dy)); }) }));
       moved++;
     });
     var bits = [moved + ' door' + (moved === 1 ? '' : 's') + ' moved onto their room\u2019s wall' + (moved ? ' (Undo puts them back)' : ''), on ? on + ' already on it' : ''];
@@ -5773,7 +5765,7 @@
     var meters = function () { return Math.min(5, Math.max(0.1, Number(reach.value) || 1.5)); };
     slot.innerHTML = '';
     slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
-      el('span', { text: 'Move each room door on floor ' + state.floor + ' onto the nearest wall of its own room (the room with its number). Doors farther away than this are left alone and listed.' }),
+      el('span', { text: 'Move each room door on floor ' + state.floor + ' onto the nearest wall of its own room (the room with its number), and each door between rooms onto the nearer wall of its two rooms. Doors farther away than this are left alone and listed.' }),
       el('label', { class: 'check' }, ['Within ', reach, ' m of the wall']),
       el('div', { class: 'actions' }, [
         button('Whole floor', function () { slot.innerHTML = ''; snapDoorsToRooms(null, meters()); }, 'primary'),
