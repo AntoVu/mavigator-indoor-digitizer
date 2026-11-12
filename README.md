@@ -56,6 +56,9 @@ a person has to check it against the diagrams and fix the rest. That review is t
    **Snap doors to their room…** (Tools panel) moves each room door onto the nearest wall of its own room (a door
    between rooms onto the nearer wall of its two rooms, sides and all), on the whole floor or in a box you draw. Doors farther than the distance you set (1.5 m to start) are left alone and
    listed, as are doors whose room has no outline. Undo puts them back.
+   An **Entrance** on a room's own outside wall (an office or lab door to the outdoors, no hallway within 3 m)
+   leads into that room: routes reach it through the room's doors, and take it only when nothing else gets
+   there. No hallway through the room is needed. Tick **Emergency exit** for an alarmed door instead.
    Some buildings join others inside (Science Hall into the Chemistry & Physics Building on floor 3, Trimble and
    Hammond, Preston, Carlisle and Ransom). Place an **Entrance** at that doorway and set **Leads to** the other
    building and the floor it opens onto there, which can be any floor. It only has to be in one of the two
