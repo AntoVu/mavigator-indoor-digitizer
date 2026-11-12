@@ -327,7 +327,8 @@
           <button class="small" id="btn-gaps" type="button" hidden title="Grows rooms across the wall gaps the script leaves: neighbors meet in the middle, and rooms reach the floor outline. Never crosses a hallway. Undo puts them back.">Close wall gaps…</button>
           <button class="small" id="btn-tidy" type="button" hidden title="Rebuilds rooms from their real walls: teeth, door notches and cut corners go, walls a wall's thickness apart or near the outline line up, rooms grow to the next room in their row, and overlaps are settled. Rooms already clean stay put and guide the rest. Undo puts them back.">Tidy rooms…</button>
           <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
-          <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button></div>
+          <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button>
+          <button class="small" id="btn-snap-doors" type="button" hidden title="Moves each room door onto the nearest wall of its own room, on this floor or in a box you draw. Doors farther than the distance you set are left alone and listed. Undo puts them back.">Snap doors to their room…</button></div>
         <div class="msg" id="tools-msg" aria-live="polite"></div>
         <div id="tools-slot"></div>
       </div>
@@ -2247,7 +2248,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
-    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = !(abbr && featuresOf(abbr).length);
+    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = $('btn-snap-doors').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -4440,7 +4441,7 @@
     if (state.mode === 'align' && state.addingRuler === 'map') t = state.rulerStart ? 'Click a second point on the ruler · hold Shift for 45\u00b0 steps · Esc cancels' : 'Click where the ruler starts · it snaps to corners, walls and rulers · Esc cancels';
     if (state.abbr && !state.floor) t = 'Add diagrams or a floor to start';
     if (state.abbr && state.leveling) t = 'Click a wall of the outline to level it · Esc cancels';
-    if (state.abbr && state.doorBox) t = state.doorBox.start ? 'Click the opposite corner of the area · Esc cancels' : 'Click one corner of the area to look for doors into rooms · Esc cancels';
+    if (state.abbr && state.doorBox) t = state.doorBox.start ? 'Click the opposite corner of the area · Esc cancels' : 'Click one corner of the area to ' + (state.doorBox.what || 'look for doors into rooms') + ' · Esc cancels';
     if (state.abbr && state.lineUp) t = state.lineUp.start ? 'Click where the line ends · walls within ' + lineUpReach() + ' m move onto it · Esc cancels' : 'Click where the line starts, along a hallway or a row of rooms · Esc stops';
     $('mode-hint').textContent = t;
   }
@@ -5732,6 +5733,62 @@
       ])]));
     slot.scrollIntoView({ block: 'nearest' });
   });
+  // Snap doors to their room: each room door on this floor (in `box` when given) moves to the nearest point on its own
+  // room's walls, if within `reach` meters. One Undo.
+  function snapDoorsToRooms(box, reach) {
+    var floor = state.floor, fs = featuresOf(state.abbr), xy = function (p) { return toXY(p.lat, p.lng); };
+    var rings = {};
+    fs.forEach(function (x) {
+      if (x.d.kind === 'room' && x.d.floor === floor && x.d.room && !x.d.solid) (rings[x.d.room] = rings[x.d.room] || []).push(roomRing(x.d).map(xy));
+    });
+    var inBox = function (p) {
+      if (!box) return true;
+      var lats = box.map(function (q) { return q.lat; }), lngs = box.map(function (q) { return q.lng; });
+      return p.lat >= Math.min.apply(null, lats) && p.lat <= Math.max.apply(null, lats) && p.lng >= Math.min.apply(null, lngs) && p.lng <= Math.max.apply(null, lngs);
+    };
+    var moved = 0, on = 0, noRoom = [], far = [];
+    fs.forEach(function (x) {
+      var d = x.d;
+      if (d.kind !== 'door' || d.floor !== floor || !inBox(d.points[0])) return;
+      if (!d.room || !rings[d.room]) return noRoom.push(d.room || '(no number)');
+      var at = xy(d.points[0]), best = null;
+      rings[d.room].forEach(function (r) {
+        r.forEach(function (a, i) { var pr = segProject(at, a, r[(i + 1) % r.length]); if (!best || pr.distance < best.distance) best = pr; });
+      });
+      if (best.distance > reach) return far.push(d.room + ' (' + best.distance.toFixed(1) + ' m)');
+      if (best.distance < 0.01) return on++;
+      setDoc(x.path, Object.assign({}, d, { points: [pointAt(fromXY(best.point.x, best.point.y))] }));
+      moved++;
+    });
+    var bits = [moved + ' door' + (moved === 1 ? '' : 's') + ' moved onto their room\u2019s wall' + (moved ? ' (Undo puts them back)' : ''), on ? on + ' already on it' : ''];
+    if (far.length) bits.push('left alone, more than ' + reach + ' m away: ' + far.join(', '));
+    if (noRoom.length) bits.push('no room outline: ' + noRoom.join(', '));
+    flash(bits.filter(Boolean).join('; ') + '.', !moved && !on);
+    renderPanels(); scheduleRender();
+  }
+  $('btn-snap-doors').addEventListener('click', function () {
+    var slot = $('tools-slot');
+    if (!state.abbr || !state.floor || state.floor === SHAPE) return flash('Open a floor first.', true);
+    var reach = el('input', { type: 'number', value: '1.5', min: '0.1', max: '5', step: '0.1', style: 'width: 5em', 'aria-label': 'meters' });
+    var meters = function () { return Math.min(5, Math.max(0.1, Number(reach.value) || 1.5)); };
+    slot.innerHTML = '';
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: 'Move each room door on floor ' + state.floor + ' onto the nearest wall of its own room (the room with its number). Doors farther away than this are left alone and listed.' }),
+      el('label', { class: 'check' }, ['Within ', reach, ' m of the wall']),
+      el('div', { class: 'actions' }, [
+        button('Whole floor', function () { slot.innerHTML = ''; snapDoorsToRooms(null, meters()); }, 'primary'),
+        button('Box an area', function () {
+          var m = meters();
+          slot.innerHTML = '';
+          state.doorBox = { start: null, what: 'snap its doors to their rooms', then: function (box) { snapDoorsToRooms(box, m); } };
+          state.doorPreview = null;
+          renderPanels(); scheduleRender();
+          flash('Click one corner of the area, then the opposite corner. Esc cancels.', false);
+        }),
+        button('Cancel', function () { slot.innerHTML = ''; })
+      ])]));
+    slot.scrollIntoView({ block: 'nearest' });
+  });
   // Room doors on this floor (inside `box`, lat/lng corners, when given) that open into another room.
   function scanDoorsInto(box, reach) {
     var floor = state.floor, fs = featuresOf(state.abbr), xy = function (p) { return toXY(p.lat, p.lng); };
@@ -5803,6 +5860,7 @@
     if (!box) return flash('Too thin: make the box at least half a meter each way.', true);
     state.doorBox = null;
     renderPanels();
+    if (b.then) return b.then(box);
     showDoorMatches(scanDoorsInto(box, b.reach));
   }
   // The script's draft of this building, with each floor's diagram already aligned (auto/<key>.json). Only this
