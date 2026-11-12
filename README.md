@@ -15,7 +15,7 @@ a person has to check it against the diagrams and fix the rest. That review is t
 ## Reviewing a building
 
 1. Open the tool. Under **Pick a building to review…**, choose one of yours.
-2. Press **Load the auto trace for this building** (in the Save panel). If the building feels laggy, press
+2. Press **Load the auto trace for this building** (in the Tools panel). If the building feels laggy, press
    **Simplify shapes (less lag)** next to it: it drops extra points along walls and outlines (Undo puts them back).
 3. Press **Add folder…** and pick the folder you unzipped. Each floor's diagram appears under the trace, already lined
    up. Switch floors with the floor buttons.
@@ -46,7 +46,7 @@ a person has to check it against the diagrams and fix the rest. That review is t
    moves onto it. Keep that distance under the hallway's width, or the rooms across the hallway move too. It stays on
    for the next line; Esc stops.
 
-   **Doors into rooms…** (Save panel) is for offices inside a suite: a room's door that opens into another room
+   **Doors into rooms…** (Tools panel) is for offices inside a suite: a room's door that opens into another room
    instead of a hallway, common after you add a room the script missed. It finds those doors on the whole floor or
    in a box you draw. It steps straight out from the wall each door sits on, and the first other numbered room
    within the distance you set is the room it connects to. It lists what it found and rings each door on the map;

@@ -319,6 +319,19 @@
         <div id="floor-flags"></div>
       </div>
 
+      <div class="panel" id="tools-panel" hidden>
+        <div class="panel-head"><h2>Tools</h2></div>
+        <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button>
+          <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button>
+          <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 30, 45, 60 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button>
+          <button class="small" id="btn-gaps" type="button" hidden title="Grows rooms across the wall gaps the script leaves: neighbors meet in the middle, and rooms reach the floor outline. Never crosses a hallway. Undo puts them back.">Close wall gaps…</button>
+          <button class="small" id="btn-tidy" type="button" hidden title="Rebuilds rooms from their real walls: teeth, door notches and cut corners go, walls a wall's thickness apart or near the outline line up, rooms grow to the next room in their row, and overlaps are settled. Rooms already clean stay put and guide the rest. Undo puts them back.">Tidy rooms…</button>
+          <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
+          <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button></div>
+        <div class="msg" id="tools-msg" aria-live="polite"></div>
+        <div id="tools-slot"></div>
+      </div>
+
       <div class="panel" id="diagrams-panel" hidden>
         <div class="panel-head"><h2>Diagrams</h2><span class="meta" id="pool-meta"></span></div>
         <div class="actions">
@@ -343,13 +356,6 @@
           <button id="btn-save-one" type="button">Save this building</button>
           <button id="btn-copy" type="button">Copy JSON</button>
         </div>
-        <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button>
-          <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button>
-          <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 30, 45, 60 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button>
-          <button class="small" id="btn-gaps" type="button" hidden title="Grows rooms across the wall gaps the script leaves: neighbors meet in the middle, and rooms reach the floor outline. Never crosses a hallway. Undo puts them back.">Close wall gaps…</button>
-          <button class="small" id="btn-tidy" type="button" hidden title="Rebuilds rooms from their real walls: teeth, door notches and cut corners go, walls a wall's thickness apart or near the outline line up, rooms grow to the next room in their row, and overlaps are settled. Rooms already clean stay put and guide the rest. Undo puts them back.">Tidy rooms…</button>
-          <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
-          <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button></div>
         <div class="msg" id="save-msg" aria-live="polite"></div>
         <textarea id="json-out" hidden aria-label="indoor-edits.json contents"></textarea>
         <div class="actions">
@@ -2236,7 +2242,7 @@
     var abbr = state.abbr, inBuilding = !!abbr;
     $('crumb-building').innerHTML = '';
     if (abbr) $('crumb-building').appendChild(el('span', {}, ['/ ', labelOf(abbr) ? el('b', { text: labelOf(abbr) }) : null, ' ' + nameOf(abbr)]));
-    ['building-panel', 'diagrams-panel', 'tool-panel', 'check-panel'].forEach(function (id) { $(id).hidden = !inBuilding; });
+    ['building-panel', 'tools-panel', 'diagrams-panel', 'tool-panel', 'check-panel'].forEach(function (id) { $(id).hidden = !inBuilding; });
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
@@ -4437,12 +4443,12 @@
     $('mode-hint').textContent = t;
   }
   function flash(text, isError) {
-    var m = $('save-msg');
-    m.textContent = text; m.className = 'msg' + (isError ? ' error' : '');
-    clearTimeout(flash.t); flash.t = setTimeout(function () { m.textContent = ''; }, 7000);
+    var ms = [$('save-msg'), $('tools-msg')];
+    ms.forEach(function (m) { m.textContent = text; m.className = 'msg' + (isError ? ' error' : ''); });
+    clearTimeout(flash.t); flash.t = setTimeout(function () { ms.forEach(function (m) { m.textContent = ''; }); }, 7000);
   }
-  function confirmThen(text, label, action) {
-    var slot = $('confirm-slot');
+  function confirmThen(text, label, action, slotId) {
+    var slot = $(slotId || 'confirm-slot');
     slot.innerHTML = '';
     slot.appendChild(el('div', { class: 'confirm' }, [el('span', { text: text }), el('div', { class: 'actions' }, [
       button(label, function () { slot.innerHTML = ''; action(); }, 'danger'),
@@ -4831,7 +4837,7 @@
     if ((e.ctrlKey || e.metaKey) && !e.altKey && key === 'c' && state.abbr && copySelection()) return e.preventDefault();
     if ((e.ctrlKey || e.metaKey) && !e.altKey && key === 'v' && state.abbr) { e.preventDefault(); return pasteClipboard(); }
     if (e.key === 'Escape' && state.leveling) { state.leveling = false; return renderPanels(); }
-    if (e.key === 'Escape' && (state.doorBox || state.doorPreview)) { state.doorBox = null; state.doorPreview = null; $('confirm-slot').innerHTML = ''; renderPanels(); return scheduleRender(); }
+    if (e.key === 'Escape' && (state.doorBox || state.doorPreview)) { state.doorBox = null; state.doorPreview = null; $('tools-slot').innerHTML = ''; renderPanels(); return scheduleRender(); }
     if (e.key === 'Escape' && state.lineUp) { if (state.lineUp.start) state.lineUp.start = null; else state.lineUp = null; renderPanels(); return scheduleRender(); }
     if (e.key === 'Escape' && state.addingRuler) return cancelRuler();
     if ((e.key === 'r' || e.key === 'R') && state.mode === 'align' && !e.ctrlKey && !e.metaKey && !e.altKey) return startRuler(state.hover === 'diagram' && state.alignLayout ? 'diagram' : 'map');
@@ -5148,7 +5154,7 @@
   }
   // Square to angles: a small panel of what to square, then one go (one Undo).
   $('btn-square').addEventListener('click', function () {
-    var abbr = state.abbr, slot = $('confirm-slot');
+    var abbr = state.abbr, slot = $('tools-slot');
     if (!abbr) return;
     var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
     var rooms = box('sq-rooms', 'Rooms (with restrooms, stairwells, elevators and solid blocks)', true);
@@ -5192,7 +5198,7 @@
   }
   // Close wall gaps: a small panel of what to close and how far, then one go (one Undo).
   $('btn-gaps').addEventListener('click', function () {
-    var abbr = state.abbr, slot = $('confirm-slot');
+    var abbr = state.abbr, slot = $('tools-slot');
     if (!abbr) return;
     var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
     var num = function (id, v) { return el('input', { type: 'number', id: id, value: String(v), min: '0.05', max: '2', step: '0.05', style: 'width: 5em', 'aria-label': 'meters' }); };
@@ -5530,7 +5536,7 @@
   }
   // Tidy rooms: a small panel, then one go (one Undo).
   $('btn-tidy').addEventListener('click', function () {
-    var abbr = state.abbr, slot = $('confirm-slot');
+    var abbr = state.abbr, slot = $('tools-slot');
     if (!abbr) return;
     var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
     var guides = box('tidy-guides', 'Rooms already clean (square corners, no teeth) stay put, and the rest line up with them', true);
@@ -5547,7 +5553,7 @@
   });
   // Delete hallways: this floor or every floor, optionally with the hallway doors (gates) on them. One Undo.
   $('btn-del-halls').addEventListener('click', function () {
-    var abbr = state.abbr, slot = $('confirm-slot');
+    var abbr = state.abbr, slot = $('tools-slot');
     if (!abbr) return;
     var box = function (id, label, on) { var i = el('input', { type: 'checkbox', id: id, checked: on || null }); return { input: i, row: el('label', { class: 'check', for: id }, [i, label]) }; };
     var count = function (kind, every) { return docsIn('features', abbr).filter(function (x) { return x.d.kind === kind && (every || x.d.floor === state.floor); }).length; };
@@ -5666,7 +5672,7 @@
   }
   // Doors into rooms: pick the reach and where to look, then check the list and convert (one Undo).
   $('btn-doors-into').addEventListener('click', function () {
-    var abbr = state.abbr, slot = $('confirm-slot');
+    var abbr = state.abbr, slot = $('tools-slot');
     if (!abbr || !state.floor || state.floor === SHAPE) return flash('Open a floor first.', true);
     var reach = el('input', { type: 'number', value: '1', min: '0.2', max: '3', step: '0.1', style: 'width: 5em', 'aria-label': 'meters' });
     var meters = function () { return Math.min(3, Math.max(0.2, Number(reach.value) || 1)); };
@@ -5714,7 +5720,7 @@
   }
   // The list to check: each match ticked, ringed on the map; Convert turns the ticked ones into doors between rooms.
   function showDoorMatches(m) {
-    var slot = $('confirm-slot');
+    var slot = $('tools-slot');
     state.doorPreview = m.found;
     slot.innerHTML = '';
     var convert = button('Convert ' + m.found.length, function () {
@@ -5783,7 +5789,7 @@
         .catch(function (e) { flash('Could not load the auto trace (' + e.message + ').', true); });
     };
     if (!featuresOf(abbr).length) return go();
-    confirmThen('Replace what is traced in ' + nameOf(abbr) + ' (' + featuresOf(abbr).length + ' features) with the auto trace?', 'Replace', go);
+    confirmThen('Replace what is traced in ' + nameOf(abbr) + ' (' + featuresOf(abbr).length + ' features) with the auto trace?', 'Replace', go, 'tools-slot');
   });
   $('btn-copy').addEventListener('click', function () {
     var text = formatJson(buildFile()) + '\n';
