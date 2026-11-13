@@ -62,6 +62,13 @@ a person has to check it against the diagrams and fix the rest. That review is t
    whose box would be over 20% bigger, likely real L shapes, and lists them; **Box an area** changes every room
    whose middle is in the box, so drag over one of those to force it. Curved rooms and solids are left alone.
    Undo puts them back.
+
+   **Line up rows…** (Tools panel) does what Line up to a line does, for a whole floor at once: walls of neighboring
+   rooms that face the same way and sit within a few centimeters of one line (0.2 m to start), end to end along a
+   row, go onto one line, so each row of rooms has one front and one back wall. The longest walls lead; rooms
+   outside a box you draw, and curved rooms, stay put and lead. Shared walls and corners touching a moved wall move
+   with it, so rooms that met still meet. Walls off the diagram's grid (a 45° wing) are left alone. Run it after
+   Tidy rooms and Close wall gaps, then Snap doors. Undo puts them back.
    An **Entrance** on a room's own outside wall (an office or lab door to the outdoors, no hallway within 3 m)
    leads into that room: routes reach it through the room's doors, and take it only when nothing else gets
    there. No hallway through the room is needed. Tick **Emergency exit** for an alarmed door instead.

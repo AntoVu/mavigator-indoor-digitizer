@@ -329,7 +329,8 @@
           <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
           <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button>
           <button class="small" id="btn-snap-doors" type="button" hidden title="Moves each room door onto the nearest wall of its own room (a door between rooms onto either of its two), on this floor or in a box you draw. Doors farther than the distance you set are left alone and listed. Undo puts them back.">Snap doors to their room…</button>
-          <button class="small" id="btn-boxify" type="button" hidden title="Turns each room into a 4-corner box: notches around pillars, cut corners and extra points go, and the walls are extended to meet. On this floor or in a box you draw. Undo puts them back.">Boxify rooms…</button></div>
+          <button class="small" id="btn-boxify" type="button" hidden title="Turns each room into a 4-corner box: notches around pillars, cut corners and extra points go, and the walls are extended to meet. On this floor or in a box you draw. Undo puts them back.">Boxify rooms…</button>
+          <button class="small" id="btn-rows" type="button" hidden title="Puts walls of neighboring rooms that face the same way and sit within a few centimeters of one line onto that line, so a row of rooms has one front and one back wall. Shared walls stay shared. On this floor or in a box you draw. Undo puts them back.">Line up rows…</button></div>
         <div class="msg" id="tools-msg" aria-live="polite"></div>
         <div id="tools-slot"></div>
       </div>
@@ -1502,6 +1503,76 @@
     r.forEach(function (p, k) { var q = r[(k + 1) % r.length]; s += p.x * q.y - q.x * p.y; });
     return s < 0 ? hull.reverse() : hull;
   }
+  // Line up rows (local meters, square to `ref`): walls of different rooms that face the same way, sit within `tol`
+  // of one line and run end to end along a row (gaps up to ROWS.gap) go onto one line: a fixed room's if one is in
+  // the group, else the length-weighted median, so the longest walls lead. A shared wall (the facing wall of the next
+  // room, within ROWS.touch) and any corner touching a moved wall move with it, so rooms that met still meet. Walls off
+  // the grid are left alone. rooms: [{ xy, fixed }]. Returns { rooms: [{ xy or null if unchanged }], lines }.
+  var ROWS = { gap: 1.0, touch: 0.03, minWall: 0.5, offDeg: 2 };
+  function lineUpRowsXY(rooms, ref, tol) {
+    var c = Math.cos(ref), s = Math.sin(ref), off = Math.sin(ROWS.offDeg * Math.PI / 180);
+    var R = rooms.map(function (r) { return r.xy.map(function (p) { return { x: p.x * c + p.y * s, y: -p.x * s + p.y * c }; }); });
+    var edges = [];
+    R.forEach(function (r, ri) {
+      var sign = ringSign(r);
+      r.forEach(function (a, i) {
+        var j = (i + 1) % r.length, b = r[j], dx = b.x - a.x, dy = b.y - a.y, len = Math.hypot(dx, dy);
+        if (len < ROWS.minWall) return;
+        var h = Math.abs(dy) / len < off, v = Math.abs(dx) / len < off;
+        if (!h && !v) return;
+        edges.push({ ri: ri, i: i, j: j, h: h, len: len, fixed: !!rooms[ri].fixed,
+          at: h ? (a.y + b.y) / 2 : (a.x + b.x) / 2,
+          s0: h ? Math.min(a.x, b.x) : Math.min(a.y, b.y), s1: h ? Math.max(a.x, b.x) : Math.max(a.y, b.y),
+          side: sign * (h ? dx : -dy) > 0 });   // the room lies on the line's + side
+      });
+    });
+    var up = edges.map(function (_, k) { return k; });
+    var find = function (k) { while (up[k] !== k) k = up[k] = up[up[k]]; return k; };
+    [true, false].forEach(function (h) {
+      var list = edges.map(function (e, k) { return k; }).filter(function (k) { return edges[k].h === h; }).sort(function (x, y) { return edges[x].at - edges[y].at; });
+      list.forEach(function (x, n) {
+        for (var m = n + 1; m < list.length && edges[list[m]].at - edges[x].at <= tol; m++) {
+          var e = edges[x], f = edges[list[m]], d = f.at - e.at, gap = Math.max(e.s0, f.s0) - Math.min(e.s1, f.s1);
+          var row = e.side === f.side && e.ri !== f.ri && gap <= ROWS.gap;
+          var shared = e.side !== f.side && d <= ROWS.touch && gap < 0;
+          if (row || shared) up[find(x)] = find(list[m]);
+        }
+      });
+    });
+    var groups = {};
+    edges.forEach(function (e, k) { (groups[find(k)] = groups[find(k)] || []).push(e); });
+    var set = R.map(function (r) { return r.map(function () { return {}; }); }), lines = 0;
+    Object.keys(groups).forEach(function (g) {
+      var es = groups[g], lo = Math.min.apply(null, es.map(function (e) { return e.at; })), hi = Math.max.apply(null, es.map(function (e) { return e.at; }));
+      if (es.length < 2 || hi - lo < 0.005) return;
+      var lead = es.filter(function (e) { return e.fixed; });
+      var pool = (lead.length ? lead : es).slice().sort(function (x, y) { return x.at - y.at; });
+      var half = pool.reduce(function (t, e) { return t + e.len; }, 0) / 2, acc = 0, to = pool[0].at;
+      for (var k = 0; k < pool.length; k++) { acc += pool[k].len; if (acc >= half) { to = pool[k].at; break; } }
+      var axis = es[0].h ? 'y' : 'x';
+      lines++;
+      es.forEach(function (e) {
+        if (e.fixed) return;
+        set[e.ri][e.i][axis] = to; set[e.ri][e.j][axis] = to;
+      });
+      // Corners of other rooms touching one of these walls (a T, a shared corner) come along.
+      R.forEach(function (r, ri) {
+        if (rooms[ri].fixed) return;
+        r.forEach(function (p, vi) {
+          if (set[ri][vi][axis] !== undefined) return;
+          var along = es[0].h ? p.x : p.y, across = p[axis];
+          if (es.some(function (e) { return Math.abs(across - e.at) <= ROWS.touch && along >= e.s0 - ROWS.touch && along <= e.s1 + ROWS.touch; })) set[ri][vi][axis] = to;
+        });
+      });
+    });
+    return { lines: lines, rooms: R.map(function (r, ri) {
+      if (!set[ri].some(function (q) { return q.x !== undefined || q.y !== undefined; })) return { xy: null };
+      var moved = r.map(function (p, vi) { var q = set[ri][vi]; return { x: q.x !== undefined ? q.x : p.x, y: q.y !== undefined ? q.y : p.y }; })
+        .filter(function (p, vi, all) { var n = all[(vi + 1) % all.length]; return Math.hypot(n.x - p.x, n.y - p.y) > 0.01; });
+      if (moved.length < 3 || ringCrossesItself(moved)) return { xy: null };
+      return { xy: moved.map(function (p) { return { x: p.x * c - p.y * s, y: p.x * s + p.y * c }; }) };
+    }) };
+  }
   function ringAreaXY(r) { var s = 0; r.forEach(function (p, i) { var q = r[(i + 1) % r.length]; s += p.x * q.y - q.x * p.y; }); return Math.abs(s) / 2; }
   function ringCrossesItself(r) {
     var n = r.length;
@@ -2281,7 +2352,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
-    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = $('btn-snap-doors').hidden = $('btn-boxify').hidden = !(abbr && featuresOf(abbr).length);
+    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = $('btn-snap-doors').hidden = $('btn-boxify').hidden = $('btn-rows').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -5885,6 +5956,54 @@
         button('Box an area', function () {
           slot.innerHTML = '';
           state.doorBox = { start: null, what: 'boxify its rooms', then: function (box) { boxifyRooms(box, false); } };
+          state.doorPreview = null;
+          renderPanels(); scheduleRender();
+          flash('Click one corner of the area, then the opposite corner. Esc cancels.', false);
+        }),
+        button('Cancel', function () { slot.innerHTML = ''; })
+      ])]));
+    slot.scrollIntoView({ block: 'nearest' });
+  });
+  // Line up rows on this floor (lineUpRowsXY): rooms whose middle is in `box` (all when null) move; the rest, and
+  // curved rooms, stay and lead. One Undo.
+  function lineUpRows(box, tol) {
+    var floor = state.floor, xy = function (p) { return toXY(p.lat, p.lng); };
+    var inBox = function (p) {
+      if (!box) return true;
+      var lats = box.map(function (q) { return q.lat; }), lngs = box.map(function (q) { return q.lng; });
+      return p.lat >= Math.min.apply(null, lats) && p.lat <= Math.max.apply(null, lats) && p.lng >= Math.min.apply(null, lngs) && p.lng <= Math.max.apply(null, lngs);
+    };
+    var feats = featuresOf(state.abbr).filter(function (x) { return x.d.kind === 'room' && x.d.floor === floor && x.d.points.length >= 3; });
+    if (!feats.length) return flash('No rooms on floor ' + floor + '.', true);
+    var mid = function (d) { var m = { lat: 0, lng: 0 }; d.points.forEach(function (q) { m.lat += q.lat / d.points.length; m.lng += q.lng / d.points.length; }); return m; };
+    var res = lineUpRowsXY(feats.map(function (x) {
+      return { xy: x.d.points.map(xy), fixed: !!(x.d.curves && Object.keys(x.d.curves).length) || !inBox(mid(x.d)) };
+    }), refAngle(feats[0].d.points[0], floor), tol);
+    var n = 0;
+    res.rooms.forEach(function (r, i) {
+      if (!r.xy) return;
+      n++;
+      setDoc(feats[i].path, Object.assign({}, feats[i].d, { points: r.xy.map(function (v) { return pointOn(fromXY(v.x, v.y), floor); }) }));
+    });
+    flash(n ? 'Lined up ' + res.lines + ' row' + (res.lines === 1 ? '' : 's') + ' of walls, moving ' + n + ' room' + (n === 1 ? '' : 's') + '. Undo puts them back.'
+      : 'Nothing to line up within ' + tol + ' m.', !n);
+    renderPanels(); scheduleRender();
+  }
+  $('btn-rows').addEventListener('click', function () {
+    var slot = $('tools-slot');
+    if (!state.abbr || !state.floor || state.floor === SHAPE) return flash('Open a floor first.', true);
+    var tolIn = el('input', { type: 'number', value: '0.2', min: '0.02', max: '0.5', step: '0.01', style: 'width: 5em', 'aria-label': 'meters' });
+    var tol = function () { return Math.min(0.5, Math.max(0.02, Number(tolIn.value) || 0.2)); };
+    slot.innerHTML = '';
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: 'Put walls of neighboring rooms on floor ' + state.floor + ' that face the same way onto one line when they are this close, so each row of rooms has one front and one back wall. The longest walls lead; rooms outside a box you draw, and curved rooms, stay put and lead. Shared walls stay shared. Walls off the diagram\u2019s grid are left alone.' }),
+      el('label', { class: 'check' }, ['Within ', tolIn, ' m of each other']),
+      el('div', { class: 'actions' }, [
+        button('Whole floor', function () { slot.innerHTML = ''; lineUpRows(null, tol()); }, 'primary'),
+        button('Box an area', function () {
+          var t = tol();
+          slot.innerHTML = '';
+          state.doorBox = { start: null, what: 'line up its rows', then: function (box) { lineUpRows(box, t); } };
           state.doorPreview = null;
           renderPanels(); scheduleRender();
           flash('Click one corner of the area, then the opposite corner. Esc cancels.', false);
