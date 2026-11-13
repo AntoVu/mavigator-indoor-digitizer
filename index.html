@@ -3332,7 +3332,7 @@
   function findReachable(floor) {
     var fs = featuresOf(state.abbr).map(function (x) { return x.d; }).filter(function (f) { return f.floor === floor; });
     var seen = {};
-    fs.forEach(function (f) { if (f.kind === 'door' && f.room) seen[f.room] = true; });
+    fs.forEach(function (f) { if ((f.kind === 'door' || f.kind === 'restroom') && f.room) seen[f.room] = true; });  // a numbered restroom is a way into its room
     var inner = fs.filter(function (f) { return f.kind === 'cdoor'; }), grew = true;
     while (grew) {
       grew = false;
