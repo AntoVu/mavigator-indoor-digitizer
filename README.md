@@ -25,13 +25,25 @@ a person has to check it against the diagrams and fix the rest. That review is t
    tool itself finds wrong; aim to empty it.
 
    To straighten crooked walls, press **Square to angles…** (next to Simplify) once the diagram sits right. It turns
-   walls to 0, 30, 45, 60 or 90° from the diagram. Rooms are always safe to square. Square hallways only after
+   walls to 0, 45 or 90° from the diagram. Rooms are always safe to square. Square hallways only after
    joining any hallway gaps (the dashed orange lines), and check the junction rings after. Undo puts everything back.
 
    Then press **Close wall gaps…**: rooms grow across the wall-thick gaps the script leaves, so neighbors meet in the
    middle and rooms reach the floor outline. It never crosses a hallway or a gap wider than its limit (0.6 m between
-   rooms, 0.8 m to the outline). Best order: place the diagram, then Simplify, Square to angles, Close wall gaps, and
-   fix the details last.
+   rooms, 0.8 m to the outline).
+
+   **Clean up building…** (Tools panel) runs these tools for you in the order that works, on every floor, in two
+   passes. Each pass is one Undo, and it lists what each tool did. Best order:
+   1. Place the diagrams.
+   2. **First pass**: Simplify, Square to angles (rooms and floor outlines), Tidy rooms, Merge doubled doors (only
+      the sure ones), Delete hallways.
+   3. By hand: fix the floor outlines (pillars and spikes), add missing rooms, fix rooms against the diagram, and draw
+      the hallways.
+   4. **Second pass**: Close wall gaps, Line up rows, Doors into rooms (every match converted, then listed), Snap
+      doors, Merge doubled doors again.
+   5. Check each floor against its diagram and empty the Checklist.
+
+   Untick any step you don't want. Each tool also has its own button, below.
 
    **Tidy rooms…** (next to Close wall gaps) does most of a floor's cleanup in one press. Each room is rebuilt from
    its real walls, so door-swing teeth, notches and cut-off corners go. Walls a wall's thickness from a neighbor's,
@@ -56,6 +68,12 @@ a person has to check it against the diagrams and fix the rest. That review is t
    **Snap doors to their room…** (Tools panel) moves each room door onto the nearest wall of its own room (a door
    between rooms onto the nearer wall of its two rooms, sides and all), on the whole floor or in a box you draw. Doors farther than the distance you set (1.5 m to start) are left alone and
    listed, as are doors whose room has no outline. Undo puts them back.
+
+   **Merge doubled doors…** (Tools panel) finds doors traced more than once: copies stacked on each other, and double
+   doors traced as two (a room's doors within 1.6 m, entrances within 2.5 m). Each becomes one door in the middle of
+   the doorway, keeping the copy with the most set (rules, Accessible, Leads to). Ticked in the list: stacked copies,
+   or leaves on one wall. Unticked: close together but on different walls, so maybe two real doors. Whole floor or
+   Box an area. Undo puts them back.
 
    **Boxify rooms…** (Tools panel) turns each room with more than 4 corners into a box: its 4 best corners, with
    the walls extended to meet where a corner was cut (a room traced around a pillar). **Whole floor** skips rooms
