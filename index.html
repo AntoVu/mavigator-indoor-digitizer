@@ -1362,13 +1362,13 @@
   }
   // Wall directions, in degrees from the reference angle; a line repeats every 180, so these cover all of 360.
   var ANGLE_SET = [0, 30, 45, 60, 90, 120, 135, 150];
-  // The angle walls square to at a point on a floor: Level to a wall when it is set, else the top edge of the
-  // diagram placed under the point, else the building's longest wall.
+  // The angle walls square to on a floor: Level to a wall when it is set, else the top edge of the floor's first
+  // placed diagram, else the building's longest wall. One angle per floor (`at` is ignored): a floor's other views
+  // can be placed turned (NANO 1's zoomed view sits at 45.6 deg to the main one's 89.3), and picking by point
+  // squared neighboring rooms a degree apart.
   function refAngle(at, floor) {
     if (state.abbr && state.turn[state.abbr] != null) return state.turn[state.abbr];
-    var list = layoutsOn(state.abbr, floor).filter(function (l) { return fitOf(l.d); }), pick = null;
-    if (at && at.layout) pick = list.filter(function (l) { return l.d.id === at.layout; })[0];
-    if (!pick && at) pick = list.filter(function (l) { var q = affineToImage(fitOf(l.d), at.lat, at.lng); return q.u >= 0 && q.u <= 1 && q.v >= 0 && q.v <= 1; }).pop();
+    var pick = layoutsOn(state.abbr, floor).filter(function (l) { return fitOf(l.d); })[0];
     if (!pick) return wallAngle();
     var A = placementOf(pick.d).A;
     return Math.atan2(A.y, A.x);
