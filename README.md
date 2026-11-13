@@ -32,7 +32,7 @@ a person has to check it against the diagrams and fix the rest. That review is t
    middle and rooms reach the floor outline. It never crosses a hallway or a gap wider than its limit (0.6 m between
    rooms, 0.8 m to the outline).
 
-   **Clean up building…** (Tools panel) runs these tools for you in the order that works, on every floor, in two
+   **Clean up building…** (Tools panel) runs these tools for you in the order that works, on the floors you tick (the one you're on, to start), in two
    passes. Each pass is one Undo, and it lists what each tool did. Best order:
    1. Place the diagrams.
    2. **First pass**: Simplify, Square to angles (rooms and floor outlines), Tidy rooms, Merge doubled doors (only

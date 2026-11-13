@@ -322,7 +322,7 @@
       <div class="panel" id="tools-panel" hidden>
         <div class="panel-head"><h2>Tools</h2></div>
         <div class="actions"><button class="small" id="btn-auto" type="button" hidden>Load the auto trace for this building</button>
-          <button class="small" id="btn-cleanup" type="button" hidden title="Runs the cleanup tools in order on every floor, in two passes: the first before you fix outlines and add missing rooms, the second after. Each pass is one Undo.">Clean up building…</button>
+          <button class="small" id="btn-cleanup" type="button" hidden title="Runs the cleanup tools in order on the floors you pick, in two passes: the first before you fix outlines and add missing rooms, the second after. Each pass is one Undo.">Clean up building…</button>
           <button class="small" id="btn-simplify" type="button" hidden title="Drops extra points along room walls and floor outlines (within 15 cm of a straight line). Makes a heavy building smooth to work in. Undo puts them back.">Simplify shapes (less lag)</button>
           <button class="small" id="btn-square" type="button" hidden title="Straightens walls to 0, 45 and 90 degrees from the diagram. Place the diagram right first. Undo puts them back.">Square to angles…</button>
           <button class="small" id="btn-gaps" type="button" hidden title="Grows rooms across the wall gaps the script leaves: neighbors meet in the middle, and rooms reach the floor outline. Never crosses a hallway. Undo puts them back.">Close wall gaps…</button>
@@ -5285,16 +5285,16 @@
   // Room walls (but not curved ones: their curves are keyed by edge) and every floor's outline. Not the building
   // outline, which is drawn by hand. One Undo puts it all back.
   $('btn-simplify').addEventListener('click', function () { if (state.abbr) simplifyBuilding(state.abbr); });
-  function simplifyBuilding(abbr) {
+  function simplifyBuilding(abbr, floor) {
     var before = 0, after = 0;
     docsIn('features', abbr).forEach(function (x) {
-      if (x.d.kind !== 'room' || x.d.curves || x.d.points.length <= 4) return;
+      if (x.d.kind !== 'room' || x.d.curves || x.d.points.length <= 4 || (floor && x.d.floor !== floor)) return;
       var pts = simplifyRing(x.d.points);
       before += x.d.points.length; after += pts.length;
       if (pts.length < x.d.points.length) setDoc(x.path, Object.assign({}, x.d, { points: pts }));
     });
     docsIn('outlines', abbr).forEach(function (x) {
-      if (x.d.floor === SHAPE) return;
+      if (x.d.floor === SHAPE || (floor && x.d.floor !== floor)) return;
       var pieces = outlinePieces(x.d).map(function (r) { before += r.length; var s = simplifyRing(r); after += s.length; return s; });
       setDoc(x.path, { abbr: x.d.abbr, floor: x.d.floor, pieces: pieces });
     });
@@ -6207,9 +6207,9 @@
     second: [['gaps', 'Close wall gaps (0.6 m between rooms, 0.8 m to the outline)'], ['rows', 'Line up rows (0.2 m)'],
       ['into', 'Doors into rooms (1 m): convert every match'], ['snap', 'Snap doors to their room (1.5 m)'], ['merge', 'Merge doubled doors again']]
   };
-  function runCleanup(abbr, pass, on) {
-    var log = [], realFlash = flash, keepFloor = state.floor, floors = floorsOf(abbr);
-    // Per-floor tools read state.floor: run them on each floor in turn, their messages labeled with it.
+  function runCleanup(abbr, pass, on, floors) {
+    var log = [], realFlash = flash, keepFloor = state.floor;
+    // The tools read state.floor: each step runs on each picked floor in turn, its messages labeled with it.
     var each = function (fn) {
       floors.forEach(function (f) {
         state.floor = f;
@@ -6223,11 +6223,11 @@
     try {
       CLEANUP[pass].forEach(function (st) {
         if (!on[st[0]]) return;
-        if (st[0] === 'simplify') simplifyBuilding(abbr);
-        else if (st[0] === 'square') squareBuilding(abbr, true, true, false, true);
-        else if (st[0] === 'tidy') tidyBuilding(abbr, true, true);
-        else if (st[0] === 'halls') deleteHallways(abbr, true, false);
-        else if (st[0] === 'gaps') closeGaps(abbr, { meet: true, outline: true, roomMax: 0.6, outlineMax: 0.8 }, true);
+        if (st[0] === 'simplify') each(function (f) { simplifyBuilding(abbr, f); });
+        else if (st[0] === 'square') each(function () { squareBuilding(abbr, true, true, false, false); });
+        else if (st[0] === 'tidy') each(function () { tidyBuilding(abbr, true, false); });
+        else if (st[0] === 'halls') each(function () { deleteHallways(abbr, false, false); });
+        else if (st[0] === 'gaps') each(function () { closeGaps(abbr, { meet: true, outline: true, roomMax: 0.6, outlineMax: 0.8 }, false); });
         else if (st[0] === 'rows') each(function () { lineUpRows(null, 0.2); });
         else if (st[0] === 'snap') each(function () { snapDoorsToRooms(null, 1.5); });
         else if (st[0] === 'into') each(function () {
@@ -6244,7 +6244,7 @@
     var slot = $('tools-slot');
     slot.innerHTML = '';
     slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
-      el('strong', { text: (pass === 'first' ? 'First pass' : 'Second pass') + ' done. One Undo takes all of it back.' }),
+      el('strong', { text: (pass === 'first' ? 'First pass' : 'Second pass') + ' done on floor' + (floors.length === 1 ? ' ' : 's ') + floors.join(', ') + '. One Undo takes all of it back.' }),
       el('ul', {}, log.map(function (t) { return el('li', { text: t }); })),
       el('span', { class: 'meta', text: pass === 'first' ? 'Next: fix the floor outlines, add missing rooms and fix rooms against the diagram, draw the hallways, then run the second pass.'
         : 'Next: check each floor against its diagram, then the Checklist.' }),
@@ -6263,13 +6263,24 @@
       });
     };
     var picked = function (pass) { var o = {}; CLEANUP[pass].forEach(function (st) { o[st[0]] = boxes[pass + st[0]].checked; }); return o; };
+    // Floors: the one you're on to start (all of them from the building outline).
+    var all = floorsOf(abbr), onFloor = all.indexOf(state.floor) >= 0, floorBoxes = all.map(function (f) {
+      var i = el('input', { type: 'checkbox', id: 'cu-floor-' + f, checked: !onFloor || f === state.floor || null });
+      return { f: f, input: i, row: el('label', { class: 'check', for: 'cu-floor-' + f, style: 'display: inline-flex; margin-right: 0.8em' }, [i, f]) };
+    });
+    var run = function (pass) {
+      var fl = floorBoxes.filter(function (b) { return b.input.checked; }).map(function (b) { return b.f; });
+      if (!fl.length) return flash('Tick at least one floor.', true);
+      runCleanup(abbr, pass, picked(pass), fl);
+    };
     slot.innerHTML = '';
     slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
-      el('span', { text: 'Clean up ' + nameOf(abbr) + ' on every floor, in two passes. Place the diagrams first. Run the first pass, then fix the floor outlines, add missing rooms, fix rooms against the diagram and draw the hallways by hand, then run the second pass. Each pass is one Undo.' }),
+      el('span', { text: 'Clean up ' + nameOf(abbr) + ' on the floors you tick, in two passes. Place the diagrams first. Run the first pass, then fix the floor outlines, add missing rooms, fix rooms against the diagram and draw the hallways by hand, then run the second pass. Each pass is one Undo.' }),
+      el('div', {}, ['Floors: '].concat(floorBoxes.map(function (b) { return b.row; }))),
       el('strong', { text: 'First pass' })].concat(rows('first'), [el('strong', { text: 'Second pass' })], rows('second'), [
       el('div', { class: 'actions' }, [
-        button('Run first pass', function () { runCleanup(abbr, 'first', picked('first')); }, 'primary'),
-        button('Run second pass', function () { runCleanup(abbr, 'second', picked('second')); }, 'primary'),
+        button('Run first pass', function () { run('first'); }, 'primary'),
+        button('Run second pass', function () { run('second'); }, 'primary'),
         button('Cancel', function () { slot.innerHTML = ''; })
       ])])));
     slot.scrollIntoView({ block: 'nearest' });
