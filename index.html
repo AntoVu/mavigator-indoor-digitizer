@@ -5439,6 +5439,44 @@
   // line up with them. halls: hallway lines, never grown across. Returns { rooms: [{ xy or null }], moved, met,
   // grown, overlaps }.
   var TIDY = { minWall: 0.8, sameRoom: 0.5, meet: 0.6, outline: 0.8, grow: 2.5, rowGap: 1.0, offAxisDeg: 8, diagonal: 1.5 };
+  // The grid a room is drawn on: 'wing' when more of its walls run 45 degrees off the diagram (an angled wing, like
+  // NANO's or PKH's) than along it, else 'main'. Tidy and Line up rows work each grid in its own frame, so a wing's
+  // rooms are tidied (cut corners and teeth gone, rows lined up) instead of skipped as slanted.
+  // Cut corners (the diagrams' chamfers): a wall under CHAMFER.max at about 45 degrees to two walls that meet square
+  // is dropped, and those two walls extended to meet. Any grid, outside corners and inside ones. A wall not longer than
+  // its neighbors on both sides is a corner cut, not a step. Returns { xy, cut } or null when there is none.
+  var CHAMFER = { max: 1.0, squareDeg: 3, diagDeg: 10 };
+  function cutCornersXY(xy) {
+    var r = xy.slice(), cut = 0, sq = Math.sin(CHAMFER.squareDeg * Math.PI / 180);
+    var dir = function (a, b) { return Math.atan2(b.y - a.y, b.x - a.x); };
+    var len = function (a, b) { return Math.hypot(b.x - a.x, b.y - a.y); };
+    for (var i = 0, tries = 0; i < r.length && r.length > 3 && tries < 2000; i++, tries++) {
+      var n = r.length, p0 = r[(i - 1 + n) % n], a = r[i], b = r[(i + 1) % n], p3 = r[(i + 2) % n], L = len(a, b);
+      if (L > CHAMFER.max || L < 1e-6 || len(p0, a) <= L || len(b, p3) <= L) continue;
+      var t1 = dir(p0, a), t2 = dir(b, p3), tc = dir(a, b);
+      if (Math.abs(Math.cos(t1 - t2)) > sq) continue;  // the two walls don't meet square
+      var off = Math.acos(Math.min(1, Math.abs(Math.cos(tc - t1)))) * 180 / Math.PI;
+      if (Math.abs(off - 45) > CHAMFER.diagDeg) continue;
+      var d1 = { x: Math.cos(t1), y: Math.sin(t1) }, d2 = { x: Math.cos(t2), y: Math.sin(t2) }, cr = d1.x * d2.y - d1.y * d2.x;
+      var k = ((b.x - a.x) * d2.y - (b.y - a.y) * d2.x) / cr, X = { x: a.x + d1.x * k, y: a.y + d1.y * k };
+      if (len(X, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }) > L) continue;
+      var next = r.slice();
+      next.splice(i, 1, X);
+      next.splice((i + 1) % next.length, 1);
+      if (ringCrossesItself(next)) continue;
+      r = next; cut++; i = Math.max(-1, i - 2);
+    }
+    return cut ? { xy: r, cut: cut } : null;
+  }
+  function roomFrameXY(xy, ref) {
+    var main = 0, wing = 0, tan = Math.tan(8 * Math.PI / 180);
+    xy.forEach(function (a, i) {
+      var b = xy[(i + 1) % xy.length], L = Math.hypot(b.x - a.x, b.y - a.y), t = Math.atan2(b.y - a.y, b.x - a.x) - ref;
+      var on = function (u) { var c = Math.abs(Math.cos(u)), d = Math.abs(Math.sin(u)); return Math.min(c, d) <= tan * Math.max(c, d); };
+      if (on(t)) main += L; else if (on(t - Math.PI / 4)) wing += L;
+    });
+    return wing > main ? 'wing' : 'main';
+  }
   function tidyRoomsXY(rooms, outlines, halls, ref, opt) {
     opt = Object.assign({}, TIDY, opt || {});
     var c = Math.cos(-ref), s = Math.sin(-ref), tan = Math.tan(opt.offAxisDeg * Math.PI / 180);
@@ -5731,7 +5769,7 @@
     var every = box('tidy-every', 'Every floor, not just floor ' + state.floor, !state.floor || state.floor === SHAPE);
     slot.innerHTML = '';
     slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
-      el('span', { text: 'Tidy ' + nameOf(abbr) + '\u2019s rooms, square to the diagram: each rebuilt from its real walls, walls a wall\u2019s thickness apart or within ' + TIDY.outline + ' m of the outline lined up, rooms grown up to ' + TIDY.grow + ' m to the next room in their row (never across a hallway or another room), overlaps given to the room that covered more. Rooms with a long slanted wall, curves or solid blocks are left as drawn.' }),
+      el('span', { text: 'Tidy ' + nameOf(abbr) + '\u2019s rooms, square to the diagram: each rebuilt from its real walls, walls a wall\u2019s thickness apart or within ' + TIDY.outline + ' m of the outline lined up, rooms grown up to ' + TIDY.grow + ' m to the next room in their row (never across a hallway or another room), overlaps given to the room that covered more. Cut corners (short 45\u00b0 walls) go, and rooms in a 45\u00b0 wing are tidied square to the wing. Rooms with a long wall on neither grid, curves or solid blocks are left as drawn.' }),
       guides.row, every.row,
       el('div', { class: 'actions' }, [
         button('Tidy', function () { slot.innerHTML = ''; tidyBuilding(abbr, guides.input.checked, every.input.checked); }, 'primary'),
@@ -5777,23 +5815,38 @@
     });
   }
   function tidyBuilding(abbr, useGuides, everyFloor) {
-    var floors = everyFloor ? floorsOf(abbr) : [state.floor], n = 0, met = 0, grown = 0, overlaps = 0;
+    var floors = everyFloor ? floorsOf(abbr) : [state.floor], n = 0, met = 0, grown = 0, overlaps = 0, cuts = 0;
     var xy = function (pts) { return pts.map(function (p) { return toXY(p.lat, p.lng); }); };
     floors.forEach(function (floor) {
       var feats = docsIn('features', abbr).filter(function (x) { return x.d.kind === 'room' && x.d.floor === floor && x.d.points.length >= 3; });
       if (!feats.length) return;
-      var ref = refAngle(feats[0].d.points[0], floor);
-      var rooms = feats.map(function (x) { var r = xy(x.d.points); return { xy: r, fixed: !!(x.d.solid || x.d.curves), guide: useGuides && cleanRing(r, ref) }; });
+      var ref = refAngle(feats[0].d.points[0], floor), cur = feats.map(function (x) { return xy(x.d.points); }), changed = [];
+      // Cut corners first, on every room that may move: Tidy keeps a room with walls on both grids as drawn.
+      feats.forEach(function (x, i) {
+        if (x.d.solid || x.d.curves) return;
+        var c = cutCornersXY(cur[i]);
+        if (c) { cur[i] = c.xy; changed[i] = true; cuts += c.cut; }
+      });
+      var frames = cur.map(function (r) { return roomFrameXY(r, ref); });
       var halls = docsIn('features', abbr).filter(function (x) { return x.d.kind === 'hallway' && x.d.floor === floor; }).map(function (x) { return xy(x.d.points); });
-      var res = tidyRoomsXY(rooms, (floorOutlineOf(abbr, floor) || buildingRings(abbr)).map(xy), halls, ref);
-      met += res.met; grown += res.grown; overlaps += res.overlaps;
-      res.rooms.forEach(function (r, i) {
-        if (!r.xy) return;
+      var outl = (floorOutlineOf(abbr, floor) || buildingRings(abbr)).map(xy);
+      [['main', ref], ['wing', ref + Math.PI / 4]].forEach(function (pass) {
+        if (frames.indexOf(pass[0]) < 0) return;
+        var rooms = feats.map(function (x, i) {
+          var mine = frames[i] === pass[0];
+          return { xy: cur[i], fixed: !!(x.d.solid || x.d.curves) || !mine, guide: useGuides && mine && cleanRing(cur[i], pass[1]) };
+        });
+        var res = tidyRoomsXY(rooms, outl, halls, pass[1]);
+        met += res.met; grown += res.grown; overlaps += res.overlaps;
+        res.rooms.forEach(function (r, i) { if (r.xy) { cur[i] = r.xy; changed[i] = true; } });
+      });
+      changed.forEach(function (c, i) {
+        if (!c) return;
         n++;
-        setDoc(feats[i].path, Object.assign({}, feats[i].d, { points: r.xy.map(function (p) { return pointOn(fromXY(p.x, p.y), floor); }) }));
+        setDoc(feats[i].path, Object.assign({}, feats[i].d, { points: cur[i].map(function (p) { return pointOn(fromXY(p.x, p.y), floor); }) }));
       });
     });
-    flash(n ? 'Tidied ' + n + ' room' + (n === 1 ? '' : 's') + ': ' + met + ' wall' + (met === 1 ? '' : 's') + ' lined up, ' + grown + ' grown to the next room in a row, ' + overlaps + ' overlap' + (overlaps === 1 ? '' : 's') + ' settled. Undo puts them back.'
+    flash(n ? 'Tidied ' + n + ' room' + (n === 1 ? '' : 's') + ': ' + (cuts ? cuts + ' cut corner' + (cuts === 1 ? '' : 's') + ' squared, ' : '') + met + ' wall' + (met === 1 ? '' : 's') + ' lined up, ' + grown + ' grown to the next room in a row, ' + overlaps + ' overlap' + (overlaps === 1 ? '' : 's') + ' settled. Undo puts them back.'
       : 'Nothing to tidy: every room is already clean.', false);
     renderPanels(); scheduleRender();
   }
@@ -6005,15 +6058,24 @@
     var feats = featuresOf(state.abbr).filter(function (x) { return x.d.kind === 'room' && x.d.floor === floor && x.d.points.length >= 3; });
     if (!feats.length) return flash('No rooms on floor ' + floor + '.', true);
     var mid = function (d) { var m = { lat: 0, lng: 0 }; d.points.forEach(function (q) { m.lat += q.lat / d.points.length; m.lng += q.lng / d.points.length; }); return m; };
-    var res = lineUpRowsXY(feats.map(function (x) {
-      return { xy: x.d.points.map(xy), fixed: !!(x.d.curves && Object.keys(x.d.curves).length) || !inBox(mid(x.d)) };
-    }), refAngle(feats[0].d.points[0], floor), tol);
-    var n = 0;
-    res.rooms.forEach(function (r, i) {
-      if (!r.xy) return;
-      n++;
-      setDoc(feats[i].path, Object.assign({}, feats[i].d, { points: r.xy.map(function (v) { return pointOn(fromXY(v.x, v.y), floor); }) }));
+    var ref = refAngle(feats[0].d.points[0], floor), cur = feats.map(function (x) { return x.d.points.map(xy); }), changed = [], lines = 0;
+    var frames = cur.map(function (r) { return roomFrameXY(r, ref); });
+    // The main grid's rows, then a 45-degree wing's, each with the other grid's rooms held still.
+    [['main', ref], ['wing', ref + Math.PI / 4]].forEach(function (pass) {
+      if (frames.indexOf(pass[0]) < 0) return;
+      var res = lineUpRowsXY(feats.map(function (x, i) {
+        return { xy: cur[i], fixed: frames[i] !== pass[0] || !!(x.d.curves && Object.keys(x.d.curves).length) || !inBox(mid(x.d)) };
+      }), pass[1], tol);
+      lines += res.lines;
+      res.rooms.forEach(function (r, i) { if (r.xy) { cur[i] = r.xy; changed[i] = true; } });
     });
+    var n = 0;
+    changed.forEach(function (c, i) {
+      if (!c) return;
+      n++;
+      setDoc(feats[i].path, Object.assign({}, feats[i].d, { points: cur[i].map(function (v) { return pointOn(fromXY(v.x, v.y), floor); }) }));
+    });
+    var res = { lines: lines };
     flash(n ? 'Lined up ' + res.lines + ' row' + (res.lines === 1 ? '' : 's') + ' of walls, moving ' + n + ' room' + (n === 1 ? '' : 's') + '. Undo puts them back.'
       : 'Nothing to line up within ' + tol + ' m.', !n);
     renderPanels(); scheduleRender();

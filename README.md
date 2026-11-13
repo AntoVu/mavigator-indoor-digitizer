@@ -50,7 +50,9 @@ a person has to check it against the diagrams and fix the rest. That review is t
    or near the outline, move onto one line. A room short of the next room in its row grows out to it, but never
    across a hallway, into another room or past the outline. Overlapping rooms are split. Rooms that are already
    clean rectangles stay put and lead: fix one room in a row by hand against the diagram, press Tidy, and the rest of
-   the row lines up with it. Rooms with a long slanted wall or curves are left as drawn. Then check each floor
+   the row lines up with it. Cut corners (short 45° walls where two walls meet square, drawn on the diagrams as
+   rounded corners) are squared off first, on any room. Rooms in a 45° wing are tidied square to the wing, and Line up
+   rows lines up the wing's rows too. Rooms with long walls on both grids, or curves, are otherwise left as drawn. Then check each floor
    against its diagram, because it lines rooms up with each other, not with the PDF.
 
    **Line up to a line** (beside Level to a wall) is for a row Tidy gets wrong. Click where a line starts and where
