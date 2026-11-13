@@ -328,7 +328,8 @@
           <button class="small" id="btn-tidy" type="button" hidden title="Rebuilds rooms from their real walls: teeth, door notches and cut corners go, walls a wall's thickness apart or near the outline line up, rooms grow to the next room in their row, and overlaps are settled. Rooms already clean stay put and guide the rest. Undo puts them back.">Tidy rooms…</button>
           <button class="small" id="btn-del-halls" type="button" hidden title="Deletes the hallways on this floor or every floor, to draw them again. Doors, stairs and entrances stay; until new hallways reach them, routes can't get there. Undo puts them back.">Delete hallways…</button>
           <button class="small" id="btn-doors-into" type="button" hidden title="Finds room doors that open into another room instead of a hallway (an office inside a suite) and turns them into doors between the two rooms, on this floor or in a box you draw. You check the list before anything changes. Undo puts them back.">Doors into rooms…</button>
-          <button class="small" id="btn-snap-doors" type="button" hidden title="Moves each room door onto the nearest wall of its own room (a door between rooms onto either of its two), on this floor or in a box you draw. Doors farther than the distance you set are left alone and listed. Undo puts them back.">Snap doors to their room…</button></div>
+          <button class="small" id="btn-snap-doors" type="button" hidden title="Moves each room door onto the nearest wall of its own room (a door between rooms onto either of its two), on this floor or in a box you draw. Doors farther than the distance you set are left alone and listed. Undo puts them back.">Snap doors to their room…</button>
+          <button class="small" id="btn-boxify" type="button" hidden title="Turns each room into a 4-corner box: notches around pillars, cut corners and extra points go, and the walls are extended to meet. On this floor or in a box you draw. Undo puts them back.">Boxify rooms…</button></div>
         <div class="msg" id="tools-msg" aria-live="polite"></div>
         <div id="tools-slot"></div>
       </div>
@@ -1469,6 +1470,38 @@
     if (!closed) out[n - 1] = onto(groups[groups.length - 1], xy[n - 1]);
     return { xy: out, drop: drop, turned: groups.filter(function (gr) { return edges[gr.edges[0]].snapped; }).length };
   }
+  // A ring's 4 best corners: its convex hull, then the hull edge whose removal (extending its two neighbors until
+  // they meet) adds the least area is cut, until 4 are left. Keeps the input's winding. Null under 4 corners.
+  function boxXY(r) {
+    var pts = r.slice().sort(function (a, b) { return a.x - b.x || a.y - b.y; });
+    var cross = function (o, a, b) { return (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x); };
+    var half = function (list) {
+      var h = [];
+      list.forEach(function (p) { while (h.length >= 2 && cross(h[h.length - 2], h[h.length - 1], p) <= 1e-9) h.pop(); h.push(p); });
+      return h.slice(0, -1);
+    };
+    var hull = half(pts).concat(half(pts.slice().reverse()));  // counterclockwise
+    if (hull.length < 4) return null;
+    while (hull.length > 4) {
+      var n = hull.length, best = null;
+      for (var i = 0; i < n; i++) {
+        var a = hull[(i - 1 + n) % n], b = hull[i], c = hull[(i + 1) % n], d = hull[(i + 2) % n];
+        var ux = b.x - a.x, uy = b.y - a.y, vx = c.x - d.x, vy = c.y - d.y, den = ux * vy - uy * vx;
+        if (Math.abs(den) < 1e-12) continue;
+        var t = ((c.x - b.x) * vy - (c.y - b.y) * vx) / den;   // b + t*u meets c + w*v
+        var w = ((c.x - b.x) * uy - (c.y - b.y) * ux) / den;
+        if (t < 0 || w < 0) continue;                          // the neighbors only meet behind the edge
+        var X = { x: b.x + t * ux, y: b.y + t * uy }, added = Math.abs(cross(b, X, c)) / 2;
+        if (!best || added < best.added) best = { i: i, X: X, added: added };
+      }
+      if (!best) return null;
+      hull.splice(best.i, 2, best.X);
+      if (best.i === n - 1) hull.shift();  // the edge wrapped: its second corner was hull[0]
+    }
+    var s = 0;
+    r.forEach(function (p, k) { var q = r[(k + 1) % r.length]; s += p.x * q.y - q.x * p.y; });
+    return s < 0 ? hull.reverse() : hull;
+  }
   function ringAreaXY(r) { var s = 0; r.forEach(function (p, i) { var q = r[(i + 1) % r.length]; s += p.x * q.y - q.x * p.y; }); return Math.abs(s) / 2; }
   function ringCrossesItself(r) {
     var n = r.length;
@@ -2248,7 +2281,7 @@
     if (state.floor === SHAPE) $('diagrams-panel').hidden = true;
     $('mode-bar').hidden = !inBuilding;
     $('btn-auto').hidden = !(abbr && AUTO.buildings[abbr]);
-    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = $('btn-snap-doors').hidden = !(abbr && featuresOf(abbr).length);
+    $('btn-simplify').hidden = $('btn-square').hidden = $('btn-gaps').hidden = $('btn-tidy').hidden = $('btn-del-halls').hidden = $('btn-doors-into').hidden = $('btn-snap-doors').hidden = $('btn-boxify').hidden = !(abbr && featuresOf(abbr).length);
     $('btn-save-one').disabled = !(abbr && (featuresOf(abbr).length || floorsOf(abbr).length));
     $('btn-undo').disabled = !undoStack.length && !drawing();
     $('btn-redo').disabled = !redoStack.length;
@@ -5800,6 +5833,58 @@
           var m = meters();
           slot.innerHTML = '';
           state.doorBox = { start: null, what: 'snap its doors to their rooms', then: function (box) { snapDoorsToRooms(box, m); } };
+          state.doorPreview = null;
+          renderPanels(); scheduleRender();
+          flash('Click one corner of the area, then the opposite corner. Esc cancels.', false);
+        }),
+        button('Cancel', function () { slot.innerHTML = ''; })
+      ])]));
+    slot.scrollIntoView({ block: 'nearest' });
+  });
+  // Boxify: every room on this floor (its middle in `box` when given) with more than 4 corners becomes its 4 best
+  // (boxXY). Curved rooms and solids are left alone. With `guard`, a box more than 20% bigger than the room (likely a
+  // real L shape) is skipped and listed. One Undo.
+  function boxifyRooms(box, guard) {
+    var floor = state.floor, xy = function (p) { return toXY(p.lat, p.lng); };
+    var inBox = function (p) {
+      if (!box) return true;
+      var lats = box.map(function (q) { return q.lat; }), lngs = box.map(function (q) { return q.lng; });
+      return p.lat >= Math.min.apply(null, lats) && p.lat <= Math.max.apply(null, lats) && p.lng >= Math.min.apply(null, lngs) && p.lng <= Math.max.apply(null, lngs);
+    };
+    var done = 0, curved = [], big = [], name = function (d) { return d.room || '(no number)'; };
+    featuresOf(state.abbr).forEach(function (x) {
+      var d = x.d;
+      if (d.kind !== 'room' || d.floor !== floor || d.solid || d.points.length <= 4) return;
+      var mid = { lat: 0, lng: 0 };
+      d.points.forEach(function (q) { mid.lat += q.lat / d.points.length; mid.lng += q.lng / d.points.length; });
+      if (!inBox(mid)) return;
+      if (d.curves && Object.keys(d.curves).length) return curved.push(name(d));
+      var ring = d.points.map(xy), b = boxXY(ring);
+      if (!b) return;
+      var grow = ringAreaXY(b) / Math.max(1e-6, ringAreaXY(ring));
+      if (guard && grow > 1.2) return big.push(name(d) + ' (+' + Math.round((grow - 1) * 100) + '%)');
+      var nd = Object.assign({}, d, { points: b.map(function (v) { return pointOn(fromXY(v.x, v.y), floor); }) });
+      delete nd.curves;
+      setDoc(x.path, nd);
+      done++;
+    });
+    var bits = [done + ' room' + (done === 1 ? '' : 's') + ' boxified' + (done ? ' (Undo puts them back)' : '')];
+    if (big.length) bits.push('left alone, the box would be much bigger (an L shape?), drag over one to force it: ' + big.join(', '));
+    if (curved.length) bits.push('curved, left alone: ' + curved.join(', '));
+    flash(bits.join('; ') + '.', !done);
+    renderPanels(); scheduleRender();
+  }
+  $('btn-boxify').addEventListener('click', function () {
+    var slot = $('tools-slot');
+    if (!state.abbr || !state.floor || state.floor === SHAPE) return flash('Open a floor first.', true);
+    slot.innerHTML = '';
+    slot.appendChild(el('div', { class: 'confirm', style: 'border-color: var(--accent)' }, [
+      el('span', { text: 'Turn each room on floor ' + state.floor + ' with more than 4 corners into a box: its 4 best corners, with walls extended to meet where a corner was cut. Whole floor skips rooms whose box would be over 20% bigger (likely real L shapes); a box you draw changes every room whose middle is in it.' }),
+      el('div', { class: 'actions' }, [
+        button('Whole floor', function () { slot.innerHTML = ''; boxifyRooms(null, true); }, 'primary'),
+        button('Box an area', function () {
+          slot.innerHTML = '';
+          state.doorBox = { start: null, what: 'boxify its rooms', then: function (box) { boxifyRooms(box, false); } };
           state.doorPreview = null;
           renderPanels(); scheduleRender();
           flash('Click one corner of the area, then the opposite corner. Esc cancels.', false);
