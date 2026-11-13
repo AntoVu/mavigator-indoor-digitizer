@@ -2235,6 +2235,10 @@
       } else if (f.kind === 'restroom' && f.floor === state.floor) {
         marker(s, selected ? C.danger : C.restroom, ROOM_GLYPHS['restroom-' + f.rkind]);
         drawTag(s, ruleTag(f));
+        // Its other doors (points after the first): faded.
+        f.points.slice(1).forEach(function (q) {
+          ctx.globalAlpha = 0.5; marker(toScreen(q.lat, q.lng), selected ? C.danger : C.restroom, ROOM_GLYPHS['restroom-' + f.rkind]); ctx.globalAlpha = 1;
+        });
       } else if (f.kind === 'connector') {
         var here = f.floors.indexOf(state.floor) >= 0, ccolor = selected ? C.danger : typeColor(f.ckind);
         square(s, ccolor, here, f.ckind === 'stairs' ? 'S' : 'E');
@@ -2966,8 +2970,12 @@
       var num = el('input', { type: 'text', id: 'sel-rnum', value: f.room || '', placeholder: 'none', autocomplete: 'off' });
       num.addEventListener('change', function () { var next = Object.assign({}, state.docs[path]); if (num.value.trim()) next.room = num.value.trim(); else delete next.room; setDoc(path, next); });
       body.appendChild(el('label', { class: 'field', for: 'sel-rnum' }, ['Room number', el('span', { class: 'hint', text: ' if the diagram gives one' }), num]));
-      body.appendChild(el('p', { class: 'meta', text: 'Drag its ' + ROOM_GLYPHS['restroom-' + f.rkind] + ' marker onto the doorway: routes join the hallway there.' }));
+      body.appendChild(el('p', { class: 'meta', text: 'Drag its ' + ROOM_GLYPHS['restroom-' + f.rkind] + ' marker onto the doorway: routes join the hallway there.'
+        + (f.points.length > 1 ? ' ' + f.points.length + ' entrances: the faded ones are its other doors (a locker room with a door on two hallways); right-click one to remove it. Routes use the nearer one, never cut through.' : '') }));
       body.appendChild(accessBlock('sel-restroom', f, function (a) { setDoc(path, withAccess(state.docs[path], a)); }));
+      if (f.floor === state.floor) body.appendChild(el('div', { class: 'actions' }, [button('Add an entrance', function () {
+        state.addingEntrance = path; flash('Click the new entrance on the map.', false); renderPanels();
+      })]));
     } else {
       var name = el('input', { type: 'text', id: 'sel-name', value: f.name, autocomplete: 'off' });
       name.addEventListener('change', function () { if (name.value.trim()) setDoc(path, Object.assign({}, state.docs[path], { name: name.value.trim() })); });
@@ -4058,9 +4066,10 @@
   function addEntrance(pos) {
     var path = state.addingEntrance, f = state.docs[path];
     state.addingEntrance = null;
-    if (!f || f.floors.indexOf(state.floor) < 0) return renderPanels();
+    if (!f || (f.kind === 'restroom' ? f.floor !== state.floor : f.floors.indexOf(state.floor) < 0)) return renderPanels();
     var walls = wallsOf(state.abbr, f.key, state.floor), ll = fromScreen(pos.x, pos.y);
     if (walls) ll = onWalls(roomRing(walls.d), ll);
+    if (f.kind === 'restroom') return setDoc(path, Object.assign({}, f, { points: f.points.concat([pointAt(ll)]) }));
     var more = Object.assign({}, f.more);
     more[state.floor] = extraEntrances(f, state.floor).concat([pointAt(ll)]);
     setDoc(path, Object.assign({}, f, { more: more }));
@@ -4068,8 +4077,8 @@
   function extraAt(pos) {
     var hit = null;
     featuresOf(state.abbr).forEach(function (x) {
-      if (x.d.kind !== 'connector') return;
-      extraEntrances(x.d, state.floor).forEach(function (q, i) {
+      var others = x.d.kind === 'connector' ? extraEntrances(x.d, state.floor) : x.d.kind === 'restroom' && x.d.floor === state.floor ? x.d.points.slice(1) : [];
+      others.forEach(function (q, i) {
         var s = toScreen(q.lat, q.lng), d = Math.hypot(s.x - pos.x, s.y - pos.y);
         if (d <= CONNECTOR_HIT_PX && (!hit || d < hit.d)) hit = { d: d, path: x.path, i: i };
       });
@@ -4077,7 +4086,9 @@
     return hit;
   }
   function removeExtraEntrance(hit) {
-    var f = state.docs[hit.path], more = Object.assign({}, f.more), list = extraEntrances(f, state.floor).filter(function (_, j) { return j !== hit.i; });
+    var f = state.docs[hit.path];
+    if (f.kind === 'restroom') return setDoc(hit.path, Object.assign({}, f, { points: f.points.filter(function (_, j) { return j !== hit.i + 1; }) }));
+    var more = Object.assign({}, f.more), list = extraEntrances(f, state.floor).filter(function (_, j) { return j !== hit.i; });
     if (list.length) more[state.floor] = list; else delete more[state.floor];
     var next = Object.assign({}, f, { more: more });
     if (!Object.keys(more).length) delete next.more;
@@ -4370,6 +4381,12 @@
         return;
       }
       if (all) { deleteFeature(path); whole++; return; }
+      if (f.kind === 'restroom' && keys.indexOf('p0') < 0) {
+        var gone = keys.filter(function (k) { return k[0] === 'p'; }).map(function (k) { return Number(k.slice(1)); });
+        setDoc(path, Object.assign({}, f, { points: f.points.filter(function (_, j) { return gone.indexOf(j) < 0; }) }));
+        pts += gone.length;
+        return;
+      }
       var ring = f.kind === 'room' || f.kind === 'area';
       if (!ring && f.kind !== 'hallway') { kept++; return; }
       var curves = Object.assign({}, f.curves || {}), points = f.points.slice(), gone = 0;
@@ -4730,10 +4747,10 @@
         spots.push({ which: 'main', at: connectorAt(f) });
         extraEntrances(f, state.floor).forEach(function (q, i) { spots.push({ which: i, at: q }); });
       }
-      if (f.kind === 'restroom' && f.floor === state.floor) spots.push({ which: 'restroom', at: f.points[0] });
+      if (f.kind === 'restroom' && f.floor === state.floor) f.points.forEach(function (q, i) { spots.push({ which: 'restroom', i: i, at: q }); });
       spots.forEach(function (sp) {
         var s = toScreen(sp.at.lat, sp.at.lng), d = Math.hypot(s.x - p.x, s.y - p.y);
-        if (d <= CONNECTOR_HIT_PX && (!hit || d < hit.d)) hit = { d: d, path: x.path, which: sp.which };
+        if (d <= CONNECTOR_HIT_PX && (!hit || d < hit.d)) hit = { d: d, path: x.path, which: sp.which, i: sp.i };
       });
     });
     if (!hit) return null;
@@ -4747,7 +4764,8 @@
         if (walls) ll = onWalls(roomRing(walls.d), ll);
         var spot = pointAt(ll), next;
         // A new object: docs from the shared draft cannot be changed in place.
-        if (hit.which === 'restroom' || (hit.which === 'main' && f.floors.length === 1)) next = Object.assign({}, f, { points: [spot] });
+        if (hit.which === 'restroom') next = Object.assign({}, f, { points: f.points.map(function (q, i) { return i === hit.i ? spot : q; }) });
+        else if (hit.which === 'main' && f.floors.length === 1) next = Object.assign({}, f, { points: [spot] });
         else if (hit.which === 'main') next = Object.assign({}, f, { stops: Object.assign({}, f.stops, (function (o) { o[state.floor] = spot; return o; })({})) });
         else {
           var more = Object.assign({}, f.more), list = extraEntrances(f, state.floor).slice();
@@ -4811,7 +4829,7 @@
       } else {
         var hp = f.kind === 'connector' ? connectorAt(f) : f.points[0], s = toScreen(hp.lat, hp.lng);
         consider(x.path, Math.hypot(s.x - pos.x, s.y - pos.y) - 2);
-        if (f.kind === 'connector') extraEntrances(f, state.floor).forEach(function (q) { var e = toScreen(q.lat, q.lng); consider(x.path, Math.hypot(e.x - pos.x, e.y - pos.y) - 2); });
+        (f.kind === 'connector' ? extraEntrances(f, state.floor) : f.kind === 'restroom' ? f.points.slice(1) : []).forEach(function (q) { var e = toScreen(q.lat, q.lng); consider(x.path, Math.hypot(e.x - pos.x, e.y - pos.y) - 2); });
       }
     });
     if (best) return best.path;
@@ -5159,6 +5177,7 @@
           var r = { key: f.key, floor: f.floor, kind: f.rkind };
           if (f.room) r.room = f.room;
           r.at = exportPoint(f.points[0]);
+          if (f.points.length > 1) r.otherDoors = f.points.slice(1).map(exportPoint);
           Object.assign(r, cleanAccess(f));
           var w = wallsOf(abbr, f.key, f.floor);
           if (w) { r.corners = w.d.points.map(exportPoint); withCurvesOut(w.d, r); }
@@ -6451,7 +6470,7 @@
         Object.keys(c.outlines || {}).forEach(function (fl) { putWalls(c.key, c.kind, fl, c.outlines[fl]); });
       });
       (b.restrooms || []).forEach(function (r) {
-        var body = Object.assign({ kind: 'restroom', floor: r.floor, rkind: r.kind, points: [inPoint(r.at)] }, cleanAccess(r));
+        var body = Object.assign({ kind: 'restroom', floor: r.floor, rkind: r.kind, points: [inPoint(r.at)].concat((r.otherDoors || []).map(inPoint)) }, cleanAccess(r));
         if (r.room) body.room = r.room;
         put(r.key, body);
         if (r.corners) putWalls(r.key, 'restroom-' + r.kind, r.floor, r);

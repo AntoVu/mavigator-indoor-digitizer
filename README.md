@@ -89,6 +89,10 @@ a person has to check it against the diagrams and fix the rest. That review is t
    outside a box you draw, and curved rooms, stay put and lead. Shared walls and corners touching a moved wall move
    with it, so rooms that met still meet. Walls off the diagram's grid (a 45° wing) are left alone. Run it after
    Tidy rooms and Close wall gaps, then Snap doors. Undo puts them back.
+   A restroom with a door on two hallways (a locker room): select it and press **Add an entrance**, then click the
+   other doorway. Its other doors show faded; drag one onto its doorway, or right-click it to remove it. Routes use
+   whichever door is nearer and never cut through it. Stairs and elevators work the same way: every entrance is
+   routed, each joined to its own hallway and to the flight.
    An **Entrance** on a room's own outside wall (an office or lab door to the outdoors, no hallway within 3 m)
    leads into that room: routes reach it through the room's doors, and take it only when nothing else gets
    there. No hallway through the room is needed. Tick **Emergency exit** for an alarmed door instead.
