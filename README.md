@@ -30,7 +30,9 @@ a person has to check it against the diagrams and fix the rest. That review is t
 
    Tick **Off angles** (next to it) to find walls that aren't at 0, 45 or 90°, measured the way Square to angles
    measures them (from the floor's placed diagram, or the leveled wall). Rooms with such a wall are filled red with the
-   wall itself in red, and floor outline segments at such an angle are drawn thick red. Curved walls are left out.
+   wall itself in red, and floor outline segments at such an angle are drawn thick red. It uses the angle readout's test
+   (more than 0.05° off and drifting 1.5 cm or more along the wall), so any wall the readout calls off is red. Curved
+   walls are left out.
 
    To straighten crooked walls, press **Square to angles…** (next to Simplify) once the diagram sits right. It turns
    walls to 0, 45 or 90° from the diagram. Rooms are always safe to square. Square hallways only after

@@ -3752,19 +3752,19 @@
     });
     ctx.setLineDash([]);
   }
-  // Off angles: edges more than OFF_ANGLE_DEG from 0/45/90 degrees off the floor's reference angle (refAngle, what
-  // Square to angles snaps to). A room with one is filled and its off edges drawn red; so are floor outline segments.
-  // Curved room edges are skipped (they bend on purpose), and edges under 5 cm (doubled points).
-  var OFF_ANGLE_DEG = 1;
+  // Off angles: edges the angle readout would call off (more than ON_ANGLE_DEG from 0/45/90 degrees off the floor's
+  // refAngle, and drifting SAVED_METERS or more along their length). A room with one is filled and its off edges drawn
+  // red; so are floor outline segments. Curved room edges are skipped (they bend on purpose), and edges under 5 cm.
   function offAngleEdges(ring, ref, curves) {
     var out = [];
     ring.forEach(function (p, i) {
       if (curves && curves[i]) return;
-      var a = toXY(p.lat, p.lng), q = ring[(i + 1) % ring.length], b = toXY(q.lat, q.lng);
-      if (Math.hypot(b.x - a.x, b.y - a.y) < 0.05) return;
+      var a = toXY(p.lat, p.lng), q = ring[(i + 1) % ring.length], b = toXY(q.lat, q.lng), len = Math.hypot(b.x - a.x, b.y - a.y);
+      if (len < 0.05) return;
       var d = ((Math.atan2(b.y - a.y, b.x - a.x) - ref) * 180 / Math.PI) % 45;
       if (d < 0) d += 45;
-      if (Math.min(d, 45 - d) > OFF_ANGLE_DEG) out.push([p, q]);
+      var off = Math.min(d, 45 - d);
+      if (off >= ON_ANGLE_DEG && len * Math.sin(off * Math.PI / 180) >= SAVED_METERS) out.push([p, q]);
     });
     return out;
   }
