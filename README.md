@@ -28,6 +28,10 @@ a person has to check it against the diagrams and fix the rest. That review is t
    with its number. A **bright red** line leaves the room on its way to the door: that door has the wrong number, or
    the room was never given one.
 
+   Tick **Off angles** (next to it) to find walls that aren't at 0, 45 or 90°, measured the way Square to angles
+   measures them (from the floor's placed diagram, or the leveled wall). Rooms with such a wall are filled red with the
+   wall itself in red, and floor outline segments at such an angle are drawn thick red. Curved walls are left out.
+
    To straighten crooked walls, press **Square to angles…** (next to Simplify) once the diagram sits right. It turns
    walls to 0, 45 or 90° from the diagram. Rooms are always safe to square. Square hallways only after
    joining any hallway gaps (the dashed orange lines), and check the junction rings after. Undo puts everything back.
