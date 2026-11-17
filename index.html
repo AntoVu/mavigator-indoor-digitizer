@@ -6484,7 +6484,15 @@
           replaceDraftWith(file, 'the auto trace of ' + nameOf(abbr), [abbr]);
           (auto.layouts || []).forEach(function (l) {
             var path = 'layouts/' + abbr + '_' + l.id;
-            if (!state.docs[path]) setDoc(path, { abbr: abbr, id: l.id, floor: l.floor, name: l.name, aspect: l.aspect, pairs: l.pairs });
+            var had = state.docs[path];
+            if (had && had.name === l.name) return; // same diagram: keep its placement, tweaked or not
+            // A new diagram under the same id (the police trace went from POL to ATI): its cached picture goes, and
+            // so does any other layout of this PDF, added from the folder unplaced.
+            if (had) { idbDelete('img:' + path); delete state.images[path]; }
+            layoutsOn(abbr, l.floor).forEach(function (o) {
+              if (o.path !== path && o.d.name === l.name) { idbDelete('img:' + o.path); delete state.images[o.path]; setDoc(o.path, null); }
+            });
+            setDoc(path, { abbr: abbr, id: l.id, floor: l.floor, name: l.name, aspect: l.aspect, pairs: l.pairs });
           });
           if (!(state.pool[abbr] || []).length) flash('Loaded. Now Add folder… with this building’s diagrams to see them under the trace.', false);
           renderPanels(); scheduleRender();
