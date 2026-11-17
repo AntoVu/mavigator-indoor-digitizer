@@ -512,6 +512,7 @@
     placeCarry: true,     // Place by hand: what was traced on the diagram moves with it (off: only the diagram moves)
     hideFloorOutline: false,    // this floor's own outline hidden (still drawn while the Floor outline tool is on)
     hideBuildingOutline: false,  // the building's outline hidden on a floor (always drawn on Building outline)
+    showDoorLinks: false, // Door links checkbox: every numbered room linked to its doors, red where a link leaves the room
     spaceHeld: false,     // Space held: dragging pans in the Move tool
     outlineBox: null,     // a cut or new outline piece being boxed: { action: 'cut' | 'add', start: first corner or null }
     outlinePiece: null,   // the selected floor-outline piece (index), for Delete this piece
@@ -2281,6 +2282,7 @@
       ctx.setLineDash([6, 5]); ctx.strokeStyle = typeColor(state.roomPending.kind); ctx.lineWidth = 2; ctx.stroke(pointRingPath(state.roomPending.corners)); ctx.setLineDash([]);
       if (state.cursor) { var ent = toScreen(entranceSpot(state.cursor).lat, entranceSpot(state.cursor).lng); ctx.fillStyle = typeColor(state.roomPending.kind); ctx.beginPath(); ctx.arc(ent.x, ent.y, 5, 0, 7); ctx.fill(); }
     }
+    if (state.showDoorLinks && state.abbr && state.floor && state.floor !== SHAPE) drawDoorLinks();
     // The selected room: dashed links to its doors, its corners, and a dot mid-edge to curve it.
     var sr = selectedRoom();
     if (sr) {
@@ -2416,6 +2418,9 @@
         box.addEventListener('change', function () { state[t[2]] = !box.checked; scheduleRender(); });
         toggles.appendChild(el('label', { class: 'check', for: t[0] }, [box, t[1]]));
       });
+      var links = el('input', { type: 'checkbox', id: 'show-door-links', checked: state.showDoorLinks || null });
+      links.addEventListener('change', function () { state.showDoorLinks = links.checked; scheduleRender(); });
+      toggles.appendChild(el('label', { class: 'check', for: 'show-door-links', title: 'A dashed line from every numbered room to its doors; red when it leaves the room' }, [links, 'Door links']));
     }
     $('building-meta').textContent = inBuilding ? floorsOf(abbr).length + ' floor(s)' : '';
     var flags = $('floor-flags'); flags.innerHTML = '';
@@ -3709,6 +3714,51 @@
     return out;
   }
   // The room's walls as a ring (tools/indoor/indoor.ts roomRing does the same).
+  // Door links: each numbered room on this floor to every door of its number, dashed. A door goes to the nearest
+  // room of that number (split rooms share one). Red when the line leaves the room before the last 1.2 m (doors sit
+  // on the wall), i.e. a door numbered for a room it isn't in.
+  function drawDoorLinks() {
+    var rooms = {};
+    featuresOf(state.abbr).forEach(function (x) {
+      var f = x.d;
+      if (f.kind !== 'room' || f.floor !== state.floor || !f.room) return;
+      var ring = roomRing(f).map(function (q) { return toScreen(q.lat, q.lng); });
+      (rooms[f.room] = rooms[f.room] || []).push({ ring: ring, anchor: insidePoint(ring) });
+    });
+    var segDist = function (p, a, b) {
+      var dx = b.x - a.x, dy = b.y - a.y, t = dx || dy ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / (dx * dx + dy * dy))) : 0;
+      return Math.hypot(p.x - a.x - t * dx, p.y - a.y - t * dy);
+    };
+    var wallDist = function (p, ring) { return ring.reduce(function (m, a, i) { return Math.min(m, segDist(p, a, ring[(i + 1) % ring.length])); }, Infinity); };
+    ctx.setLineDash([4, 4]);
+    roomDoorSpots(state.floor).forEach(function (d) {
+      var cands = rooms[d.room];
+      if (!cands) return;
+      var q = toScreen(d.ll.lat, d.ll.lng), up = toScreen(d.ll.lat + 1.2 / 111320, d.ll.lng), slack = Math.hypot(up.x - q.x, up.y - q.y);
+      var r = cands.reduce(function (best, c) { return !best || wallDist(q, c.ring) < wallDist(q, best.ring) ? c : best; }, null);
+      var len = Math.hypot(q.x - r.anchor.x, q.y - r.anchor.y), out = false;
+      for (var i = 1; i < 40 && !out; i++) {
+        var t = i / 40;
+        if ((1 - t) * len <= slack) break;
+        out = !inRing({ x: r.anchor.x + (q.x - r.anchor.x) * t, y: r.anchor.y + (q.y - r.anchor.y) * t }, r.ring);
+      }
+      ctx.strokeStyle = out ? '#ff1a1a' : C['text-dim']; ctx.lineWidth = out ? 2.5 : 1.25;
+      ctx.beginPath(); ctx.moveTo(r.anchor.x, r.anchor.y); ctx.lineTo(q.x, q.y); ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+  // A point inside the ring: its vertex center when that is inside, else the inside grid point nearest it (L shapes).
+  function insidePoint(ring) {
+    var c = centerOf(ring);
+    if (inRing(c, ring)) return c;
+    var xs = ring.map(function (p) { return p.x; }), ys = ring.map(function (p) { return p.y; });
+    var x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys), best = null;
+    for (var i = 1; i < 12; i++) for (var j = 1; j < 12; j++) {
+      var p = { x: x0 + (x1 - x0) * i / 12, y: y0 + (y1 - y0) * j / 12 };
+      if (inRing(p, ring) && (!best || Math.hypot(p.x - c.x, p.y - c.y) < Math.hypot(best.x - c.x, best.y - c.y))) best = p;
+    }
+    return best || c;
+  }
   function roomRing(f) { return f.points.reduce(function (out, _, i) { return out.concat(edgeSamples(f, i).slice(0, -1)); }, []); }
   function centerOf(pts) { return pts.reduce(function (m, q) { return { x: m.x + q.x / pts.length, y: m.y + q.y / pts.length }; }, { x: 0, y: 0 }); }
   // On screen: each corner, and each edge's middle (on its curve), where it is dragged to bend it.

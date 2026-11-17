@@ -24,6 +24,10 @@ a person has to check it against the diagrams and fix the rest. That review is t
    floor. **How this works** at the top of the tool explains each drawing tool. The **Checklist** panel lists what the
    tool itself finds wrong; aim to empty it.
 
+   Tick **Door links** (beside the outline checkboxes) to draw a dashed line from every numbered room to each door
+   with its number. A **bright red** line leaves the room on its way to the door: that door has the wrong number, or
+   the room was never given one.
+
    To straighten crooked walls, press **Square to angles…** (next to Simplify) once the diagram sits right. It turns
    walls to 0, 45 or 90° from the diagram. Rooms are always safe to square. Square hallways only after
    joining any hallway gaps (the dashed orange lines), and check the junction rings after. Undo puts everything back.

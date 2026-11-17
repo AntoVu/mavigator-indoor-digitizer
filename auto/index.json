@@ -56,7 +56,7 @@
    "layouts": 6
   },
   "SWSH": {
-   "name": "SWSH - UTA School of Social Work & CONHI Smart Hospital",
+   "name": "School of Social Work and Smart Hospital",
    "folder": "SWSH",
    "layouts": 6
   },
@@ -115,7 +115,7 @@
    "folder": "CPB",
    "layouts": 3
   },
-  "residence-trinity-hall": {
+  "administration-trinity-hall": {
    "name": "Trinity Hall",
    "folder": "TRIN",
    "layouts": 3
@@ -217,7 +217,52 @@
   },
   "administration-uta-police-department": {
    "name": "UTA Police Department",
-   "folder": "POL",
+   "folder": "ATI",
+   "layouts": 3
+  },
+  "CMPC": {
+   "name": "CAPPA North",
+   "folder": "CMPC",
+   "layouts": 1
+  },
+  "misc-the-commons": {
+   "name": "The Commons",
+   "folder": "TCOM",
+   "layouts": 1
+  },
+  "administration-finance-and-administration-annex": {
+   "name": "Finance and Administration Annex",
+   "folder": "FAAA",
+   "layouts": 2
+  },
+  "misc-west-mitchell-center": {
+   "name": "West Mitchell Center",
+   "folder": "SAB",
+   "layouts": 1
+  },
+  "GILS": {
+   "name": "Gilstrap Athletic Center",
+   "folder": "GILS",
+   "layouts": 1
+  },
+  "STAD": {
+   "name": "Maverick Stadium",
+   "folder": "MavStadium",
+   "layouts": 3
+  },
+  "outdoor-clay-gould-ballpark": {
+   "name": "Clay Gould Ballpark",
+   "folder": "Ballpark",
+   "layouts": 3
+  },
+  "outdoor-softball-clubhouse": {
+   "name": "Softball Clubhouse",
+   "folder": "softball",
+   "layouts": 1
+  },
+  "misc-tennis-center": {
+   "name": "Tennis Center",
+   "folder": "Tennis",
    "layouts": 1
   },
   "ARDRC": {
@@ -238,6 +283,11 @@
   "administration-dan-dipert-welcome-center": {
    "name": "Dan Dipert Welcome Center",
    "folder": "WELC",
+   "layouts": 1
+  },
+  "academic-tri-pre-college-programs": {
+   "name": "Tri Pre College Programs",
+   "folder": "POL",
    "layouts": 1
   }
  }
