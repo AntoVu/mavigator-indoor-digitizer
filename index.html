@@ -233,9 +233,9 @@
       <li><b>Add folder</b> and pick <code>tools/indoor/cache/evac/</code> once. Every diagram is filed under its building and floor and kept in this browser, so you don't add them again next time.</li>
       <li><b>Click a building</b> on the campus map. Nedderman, ERB and Woolf are labeled, but any building opens, even just to mark its entrances.</li>
       <li>Each floor's diagrams are grouped into <b>views</b>: diagrams that differ only in the red "you are here" dot are one view. Press <b>Use as layout</b> on each view and <b>Align</b> it: click a corner on the diagram, then the same corner of the outline. Three pairs place it; a fourth shows the fit in meters. Or press <b>Place by hand</b> and drag the diagram itself over the building: inside it to move it, a corner to resize it, an edge&rsquo;s middle dot to stretch it, the round knob to rotate it. What was traced on that diagram moves with it (uncheck <b>Move the traces with it</b> to move the diagram alone); traces from other diagrams under it stay put. <b>Rotate</b> the diagram under it if it is drawn turned. For a point nothing marks, draw <b>rulers</b> (R) on the diagram or the map: guide lines that hold Shift for 45&deg; steps, and clicks snap where they cross. If a grouping is wrong, move a diagram to another view.</li>
-      <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it. Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap angles</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags at 0, 45 or 90&deg; from the floor's diagram (or the leveled wall); hold Shift to flip it. Whatever you draw or drag, and the selected room or hallway, shows each edge's angle from the diagram: <b>green &check;</b> when it is exactly on 0, 45 or 90&deg;, <b>amber</b> with how far off (&ldquo;1.4&deg; off 90&deg;&rdquo;) when it is close but not on. <b>Square to angles&hellip;</b> (Tools panel) straightens a whole building's walls the same way. <b>Tidy rooms&hellip;</b> (Tools panel) does the rest of a cleanup in one go: each room rebuilt from its real walls (teeth, door notches and cut corners go), walls lined up with the neighbor's and the outline, rooms grown to the next room in their row, overlaps settled. Fix one room of a row by hand first and the rest line up with it. <b>Line up to a line</b>: click along a hallway or row, and every room wall near that line moves onto it. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
+      <li>Upper floor smaller than the building, or OSM's shape off? <b>Floor outline</b>: drag corners, click an edge to add one, right-click a corner to delete it (hold and drag to delete several). Wings that don't connect on a floor? <b>Cut out a gap</b>: box the space between them, across the outer wall, and the outline splits into pieces (<b>Add a piece</b> and <b>Delete this piece</b> work on pieces directly). The <b>Building outline</b> button beside the floors edits the building's own shape, which is not a floor: it replaces OSM's here at once and on the campus map after <code>npm run import:osm</code>, and is the walls of any floor without its own outline. <b>Combine all floors</b> builds it from every floor's outline. <b>Snap angles</b> keeps corners, hallways, room walls, areas, door lines, gate bars and Move drags at 0, 45 or 90&deg; from the floor's diagram (or the leveled wall); hold Shift to flip it. Whatever you draw or drag, and the selected room or hallway, shows each edge's angle from the diagram: <b>green &check;</b> when it is exactly on 0, 45 or 90&deg;, <b>amber</b> with how far off (&ldquo;1.4&deg; off 90&deg;&rdquo;) when it is close but not on. <b>Square to angles&hellip;</b> (Tools panel) straightens a whole building's walls the same way. <b>Tidy rooms&hellip;</b> (Tools panel) does the rest of a cleanup in one go: each room rebuilt from its real walls (teeth, door notches and cut corners go), walls lined up with the neighbor's and the outline, rooms grown to the next room in their row, overlaps settled. Fix one room of a row by hand first and the rest line up with it. <b>Line up to a line</b>: click along a hallway or row, and every room wall near that line moves onto it. <b>Snap to features</b> makes clicks and drags land on nearby hallways, room corners, walls and edges (a red ring shows where); uncheck it to place freely. Building drawn a few degrees off north? <b>Level to a wall</b>, then click a wall of the outline: the view turns so it is level, and room boxes, snaps and guides square to it. It only changes the view (<b>North up</b> undoes it); nothing saved moves.</li>
       <li><b>Trace</b>: hallway centerlines (they join where they meet), a door for each room with its number (a door <b>between two rooms</b>, like an office inside another room, is a line drawn across the doorway, labeled on each side), <b>objects</b> (vending machines, seating...) and <b>entrances</b>, which snap onto the wall. Each entrance says who may go <b>in</b> (anyone, staff with a keycard, or no one) and <b>out</b>; tick <b>Emergency exit</b> for alarmed doors, which routes never use. An entrance on a room&rsquo;s own outside wall (an office or lab door to the outdoors, no hallway within 3 m) leads into that room: routes reach it through the room&rsquo;s doors, and take it only when nothing else gets there. A <b>gate</b> (the Gate button) is a door across a hallway with a rule each way: click the hallway on one side of it, then the other, and pick who may pass each way (a keycard door, a one-way exit, an emergency door). Hallways only reachable through it are tinted its color; drag its bar's ends to the walls. Drag a room door, a gate (its bar), a door between rooms (its middle dot) or an entrance to move it, no Move needed. Room, restroom, stair and elevator doors take the same rules: who may go in, who may come out, and Emergency. An ordinary door anyone opens needs nothing: just trace the hallway through it. <b>Areas</b> are commons, lobbies and atriums: everything on an area's edge joins in straight lines, so there is no need for rows of parallel hallways.</li>
-      <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it.</li>
+      <li><b>Room</b> outlines are what the app draws, so it shows a floor plan instead of hallway lines. Click one corner of a room, then the opposite corner: the box lines up with the building, and its corners snap to other rooms and the floor outline. If the box touches one room&rsquo;s door, it takes that room&rsquo;s number. Check <b>People may walk through</b> on a lecture hall or library to let routes cross it. The <b>Type</b> picker also draws a <b>restroom</b>, <b>stairwell</b> or <b>elevator</b> (box its walls, then click its entrance; each has its own color) and <b>solid blocks</b> for pillars and filled-in walls. A stairwell or elevator lists the floors it goes to in its panel: checking one copies its walls and entrance there, to drag into place. Then click the room to shape it: drag corners, click an edge to add a corner, drag an edge&rsquo;s middle dot to curve it, right-click a corner to delete it (hold and drag to delete several).</li>
       <li><b>Move</b>: drag a door, entrance, object, stairwell, hallway or room to move it. Drag on an empty spot to box an area, then drag the selection to move everything inside it together, or drag a corner square of its dashed box to resize it all at once (hold Shift to keep its proportions), or the round knob above the box to rotate it (Shift turns in 15° steps). <b>Delete</b> removes what's boxed: whole items, or just the boxed corners of a room, area or hallway (box a cutout's corners to remove it). Space+drag pans. Each diagram has its own <b>opacity</b> slider in its row under Diagrams.</li>
       <li><b>Undo</b> with Ctrl+Z and <b>redo</b> with Ctrl+Y (or Ctrl+Shift+Z), or the buttons by Fit: any change, from a dragged corner to an opened file. While drawing (a hallway, an area, a room box), Ctrl+Z takes back the last point first.</li>
       <li><b>Save indoor-edits.json</b> into <code>src/data/</code>, run <code>npm run import:osm</code>, then <code>npm test</code>. The import report's INDOOR section lists anything it could not place.</li>
@@ -438,7 +438,7 @@
     elevator: 'Click the elevator · click a hollow one to add this floor · drag one to move it on this floor',
     entrance: 'Click the wall where the door is · it snaps onto the outline',
     object: 'Pick a kind in the panel, then click where it is',
-    outline: 'Drag a corner · click an edge to add one · right-click a corner to delete it · click inside a piece to select it',
+    outline: 'Drag a corner · click an edge to add one · right-click a corner to delete it (hold and drag to delete several) · click inside a piece to select it',
     room: 'Click a corner of the room, then the opposite corner · click a room to reshape it · Esc cancels',
     area: 'Click the area\u2019s corners · double-click or Enter to close · Backspace undoes · Esc cancels'
   };
@@ -2700,7 +2700,7 @@
       var onShape = state.floor === SHAPE;
       body.appendChild(el('p', { class: 'meta', text: (onShape
         ? 'The building\u2019s own outline, not a floor: its shape on the campus map in place of OSM\u2019s (after npm run import:osm), and the walls of any floor with no outline of its own. OSM\u2019s shape is dashed underneath, and every floor\u2019s outline is dotted.'
-        : 'Floor ' + state.floor + '\u2019s own outline, for floors smaller than the building or split into pieces.') + ' Drag a corner, click an edge to add one, right-click a corner to delete it.' }));
+        : 'Floor ' + state.floor + '\u2019s own outline, for floors smaller than the building or split into pieces.') + ' Drag a corner, click an edge to add one, right-click a corner to delete it (hold and drag to delete several).' }));
       if (onShape && !state.outlineBox) body.appendChild(el('div', { class: 'actions' }, [button('Combine all floors', combineFloors),
         el('span', { class: 'meta', text: 'Every floor\u2019s outline put together.' })]));
       var ownNow = floorOutlineOf(state.abbr, state.floor) || [], ob = state.outlineBox;
@@ -2781,7 +2781,7 @@
       body.appendChild(el('p', { class: 'meta', text: state.roomPending ? 'Now click its entrance, on the wall where the door is. Esc cancels.' : state.roomStart
         ? 'Now click the opposite corner. Esc cancels.'
         : 'Click one corner, then the opposite corner: the box lines up with the building, and corners snap to other rooms and the floor outline (red ring), or line up with their corners (red dashed guide). A room box touching one room\u2019s door takes that room\u2019s number; one around a stairwell, elevator or restroom with no walls on this floor becomes its walls; otherwise it takes the number above.' }));
-      body.appendChild(el('p', { class: 'meta', text: 'Click a room to shape it: drag a corner, click an edge to add a corner, drag an edge\u2019s middle dot to curve it (double-click the dot to straighten it), right-click a corner to delete it.' }));
+      body.appendChild(el('p', { class: 'meta', text: 'Click a room to shape it: drag a corner, click an edge to add a corner, drag an edge\u2019s middle dot to curve it (double-click the dot to straighten it), right-click a corner to delete it (hold and drag to delete several).' }));
       var named = {}, done = {};
       roomDoorSpots(state.floor).forEach(function (d) { named[d.room] = true; });
       roomsOn(state.floor).forEach(function (x) { done[x.d.room] = true; });
@@ -2864,7 +2864,7 @@
         })]));
         else body.appendChild(el('p', { class: 'meta', text: 'Place its entrance with the Room tool (Entrance only), then pick it here.' }));
       }
-      body.appendChild(el('p', { class: 'meta', text: f.points.length + ' corners. Drag a corner, click an edge to add one, drag an edge\u2019s middle dot to curve it, right-click a corner to delete it.' }));
+      body.appendChild(el('p', { class: 'meta', text: f.points.length + ' corners. Drag a corner, click an edge to add one, drag an edge\u2019s middle dot to curve it, right-click a corner to delete it (hold and drag to delete several).' }));
       if (o) renderOwner(body, o.path, o.d);
       body.appendChild(el('div', { class: 'actions' }, [button('Delete walls', function () { state.selection = null; setDoc(path, null); }, 'danger'),
         o ? button('Delete ' + ownerName(o.d), function () { state.selection = null; deleteFeature(o.path); }, 'danger') : null, button('Done', close)]));
@@ -2889,7 +2889,7 @@
         if (f.walkThrough) body.appendChild(el('p', { class: 'meta', text: 'Routes may cross it between its doors, at 3\u00d7 the walk, so only when that saves a lot.' }));
       }
       var curved = Object.keys(f.curves || {}).length;
-      body.appendChild(el('p', { class: 'meta', text: f.points.length + ' corners' + (curved ? ', ' + curved + ' curved edge(s)' : '') + '. Drag a corner, click an edge to add one, drag an edge\u2019s middle dot to curve it (double-click it to straighten), right-click a corner to delete it.' }));
+      body.appendChild(el('p', { class: 'meta', text: f.points.length + ' corners' + (curved ? ', ' + curved + ' curved edge(s)' : '') + '. Drag a corner, click an edge to add one, drag an edge\u2019s middle dot to curve it (double-click it to straighten), right-click a corner to delete it (hold and drag to delete several).' }));
     } else if (f.kind === 'cdoor') {
       [0, 1].forEach(function (i) {
         var side = el('input', { type: 'text', id: 'sel-side-' + i, value: f.rooms[i], autocomplete: 'off' });
@@ -5073,7 +5073,18 @@
       end: function () { state.snap = null; state.guides = null; state.angleEdges = null; setFloorOutline(pieces); }
     };
   });
-  canvas.addEventListener('contextmenu', function (e) {
+  // Right-click deletes the corner under the cursor; holding the right button and dragging deletes every corner it passes.
+  canvas.addEventListener('contextmenu', function (e) { if (!rightErased) rightDelete(e); else e.preventDefault(); });
+  var rightDown = false, rightErased = false;
+  canvas.addEventListener('pointerdown', function (e) { if (e.button === 2) { rightDown = true; rightErased = false; } });
+  canvas.addEventListener('pointermove', function (e) {
+    if (!rightDown) return;
+    if (!(e.buttons & 2)) { rightDown = false; return; }
+    rightErased = true;
+    rightDelete(e);
+  });
+  window.addEventListener('pointerup', function (e) { if (e.button === 2) rightDown = false; });
+  function rightDelete(e) {
     var cbox = shell.getBoundingClientRect(), extra = (state.mode === 'select' || state.mode === 'room') && extraAt({ x: e.clientX - cbox.left, y: e.clientY - cbox.top });
     if (extra) { e.preventDefault(); return removeExtraEntrance(extra); }
     var sr = (state.mode === 'select' || state.mode === 'room') && selectedRoom();
@@ -5092,7 +5103,7 @@
     var next = own.slice();
     next[v.p] = own[v.p].filter(function (_, j) { return j !== v.i; });
     setFloorOutline(next);
-  });
+  }
   interactive(dcanvas, dshell, function () { return state.dview; }, function (p) {
     var l = state.docs[state.alignLayout];
     if (!l || state.mode !== 'align') return;
